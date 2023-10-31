@@ -1,0 +1,23 @@
+{
+    "name": "Colony Historian",
+    "description": "Recorder for Colonist.io games",
+    "version": "1.0",
+    "manifest_version": 3,
+    "action": {
+        "default_icon": "icon/icon_128.png"
+    },
+    "content_scripts": [
+        {
+            "js": [
+                "src/historian.js"
+            ],
+            "matches": [
+                "https://colonist.io/*"
+            ]
+        }
+    ],
+    "permissions": [
+        "activeTab",
+        "scripting"
+    ]
+}
