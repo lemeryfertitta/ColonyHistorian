@@ -8,12 +8,14 @@
     },
     "content_scripts": [
         {
+            "world": "MAIN",
             "js": [
                 "src/historian.js"
             ],
             "matches": [
                 "https://colonist.io/*"
-            ]
+            ],
+            "run_at": "document_start"
         }
     ],
     "permissions": [

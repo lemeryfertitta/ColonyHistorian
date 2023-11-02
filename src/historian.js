@@ -1,99 +1,36 @@
-const mediaSource = new MediaSource();
-mediaSource.addEventListener('sourceopen', handleSourceOpen, false);
-let mediaRecorder;
-let observer;
-let recordedBlobs;
-let sourceBuffer;
-let stream;
+var enc = new TextDecoder("utf-8");
+(function () {
+    var OrigWebSocket = window.WebSocket;
+    var callWebSocket = OrigWebSocket.apply.bind(OrigWebSocket);
+    var wsAddListener = OrigWebSocket.prototype.addEventListener;
+    wsAddListener = wsAddListener.call.bind(wsAddListener);
+    window.WebSocket = function WebSocket(url, protocols) {
+        var ws;
+        if (!(this instanceof WebSocket)) {
+            // Called without 'new' (browsers will throw an error).
+            ws = callWebSocket(this, arguments);
+        } else if (arguments.length === 1) {
+            ws = new OrigWebSocket(url);
+        } else if (arguments.length >= 2) {
+            ws = new OrigWebSocket(url, protocols);
+        } else { // No arguments (browsers will throw an error)
+            ws = new OrigWebSocket();
+        }
 
-const rightSide = document.getElementById("in_game_ab_right");
-const recordButton = document.createElement("button");
-recordButton.textContent = "Start Recording";
-rightSide.insertBefore(recordButton, rightSide.firstChild);
-const downloadButton = document.createElement("button");
-downloadButton.textContent = "Download";
-downloadButton.disabled = true;
-rightSide.insertBefore(downloadButton, rightSide.firstChild);
+        wsAddListener(ws, 'message', function (event) {
+            const byteArray = new Int8Array(event.data);
+            const str = new TextDecoder().decode(byteArray);
+            console.log(str)
+        });
+        return ws;
+    }.bind();
+    window.WebSocket.prototype = OrigWebSocket.prototype;
+    window.WebSocket.prototype.constructor = window.WebSocket;
 
-recordButton.onclick = toggleRecording;
-downloadButton.onclick = download;
-
-function handleSourceOpen(event) {
-    console.log('MediaSource opened');
-    sourceBuffer = mediaSource.addSourceBuffer('video/webm; codecs="vp8"');
-    console.log('Source buffer: ', sourceBuffer);
-}
-
-function handleDataAvailable(event) {
-    if (event.data && event.data.size > 0) {
-        recordedBlobs.push(event.data);
-    }
-}
-
-function handleStop(event) {
-    console.log('Recorder stopped: ', event);
-}
-
-function toggleRecording() {
-    if (recordButton.textContent === 'Start Recording') {
-        startRecording();
-    } else {
-        stopRecording();
-        recordButton.textContent = 'Start Recording';
-        downloadButton.disabled = false;
-    }
-}
-
-function startRecording() {
-    let options = { mimeType: 'video/webm' };
-    recordedBlobs = [];
-    const canvas = document.querySelector('canvas');
-    stream = canvas.captureStream(0);
-    console.log('Started stream capture from canvas element: ', stream);
-    mediaRecorder = new MediaRecorder(stream, options);
-    console.log('Created MediaRecorder', mediaRecorder, 'with options', options);
-    recordButton.textContent = 'Stop Recording';
-    downloadButton.disabled = true;
-    mediaRecorder.onstop = handleStop;
-    mediaRecorder.ondataavailable = handleDataAvailable;
-    mediaRecorder.start();
-    console.log('MediaRecorder started', mediaRecorder);
-
-    const gameLog = document.getElementById("game-log-text");
-    // Options for the observer (which mutations to observe)
-    const config = { attributes: false, childList: true, subtree: true };
-
-    // Callback function to execute when mutations are observed
-    const callback = (mutationList, _) => {
-        console.log("Game log changed: ", mutationList);
-        // TODO: Look only for game events which cause a change in the board state.
-        stream.getVideoTracks()[0].requestFrame();
+    var wsSend = OrigWebSocket.prototype.send;
+    wsSend = wsSend.apply.bind(wsSend);
+    OrigWebSocket.prototype.send = function (data) {
+        console.log(data.data)
+        return wsSend(this, arguments);
     };
-
-    // Create an observer instance linked to the callback function
-    observer = new MutationObserver(callback);
-
-    // Start observing the target node for configured mutations
-    observer.observe(gameLog, config);
-}
-
-function stopRecording() {
-    mediaRecorder.stop();
-    observer.disconnect();
-    console.log('Recorded Blobs: ', recordedBlobs);
-}
-
-function download() {
-    const blob = new Blob(recordedBlobs, { type: 'video/webm' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.style.display = 'none';
-    a.href = url;
-    a.download = 'test.webm';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-    }, 100);
-}
+})();
