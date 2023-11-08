@@ -1,4 +1,6 @@
 var enc = new TextDecoder("utf-8");
+let content = [];
+
 (function () {
     var OrigWebSocket = window.WebSocket;
     var callWebSocket = OrigWebSocket.apply.bind(OrigWebSocket);
@@ -18,9 +20,9 @@ var enc = new TextDecoder("utf-8");
         }
 
         wsAddListener(ws, 'message', function (event) {
-            const byteArray = new Int8Array(event.data);
-            const str = new TextDecoder().decode(byteArray);
-            console.log(str)
+            console.log(event.data)
+            content.push(event.data)
+            createDownloadButton()
         });
         return ws;
     }.bind();
@@ -30,7 +32,37 @@ var enc = new TextDecoder("utf-8");
     var wsSend = OrigWebSocket.prototype.send;
     wsSend = wsSend.apply.bind(wsSend);
     OrigWebSocket.prototype.send = function (data) {
-        console.log(data.data)
+        console.log(data)
         return wsSend(this, arguments);
     };
 })();
+
+
+function saveLog() {
+    const blob = new Blob(content, { type: "text/plain" });
+    const anchor = document.createElement("a");
+    anchor.href = URL.createObjectURL(blob);
+    const date = new Date();
+    anchor.download = date.toISOString() + ".historian"
+    anchor.hidden = true;
+    document.body.appendChild(anchor);
+    anchor.click();
+}
+
+function createDownloadButton() {
+    if (document.getElementById("historian-download") == null) {
+        const rightSide = document.getElementById("in_game_ab_right");
+        if (rightSide != null) {
+            const downloadButton = document.createElement("button");
+            downloadButton.id = "historian-download";
+            downloadButton.onclick = saveLog;
+            downloadButton.innerText = "Download Log"
+            rightSide.insertBefore(downloadButton, rightSide.firstChild);
+        }
+    }
+}
+
+
+
+
+
