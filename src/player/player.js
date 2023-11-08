@@ -15,6 +15,15 @@ const tileTypeToResourceName = {
     4: 'grain',
     5: 'ore'
 };
+const portTypeToResourceName = {
+    1: 'any',
+    2: 'lumber',
+    3: 'brick',
+    4: 'wool',
+    5: 'grain',
+    6: 'ore'
+}
+
 
 
 eventIndexInput.addEventListener('change', (event) => {
@@ -31,8 +40,10 @@ gameLogInput.addEventListener('change', (event) => {
             const event = gameLog[i];
             if (event.data.type == 14) {
                 currentEventIndex = i;
-                const tiles = event.data.payload.tileState.tiles;
-                for (const tile of tiles) {
+
+                // https://www.redblobgames.com/grids/hexagons/
+                // Draw hex grid
+                for (const tile of event.data.payload.tileState.tiles) {
                     const resourceName = tileTypeToResourceName[tile.tileType];
                     const hexFace = document.createElementNS('http://www.w3.org/2000/svg', 'use');
                     hexFace.setAttribute('href', `#${resourceName}`);
@@ -58,7 +69,37 @@ gameLogInput.addEventListener('change', (event) => {
                         diceProbability.setAttribute('dominant-baseline', 'middle');
                         diceProbability.setAttribute('text-anchor', 'middle');
                         hexGrid.appendChild(diceProbability);
+                    } else {
+                        const robber = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+                        robber.setAttribute('href', '#robber');
+                        robber.setAttribute('x', x + 25);
+                        robber.setAttribute('y', y + 50);
+                        hexGrid.appendChild(robber);
                     }
+                }
+
+                // Draw ports
+                for (const portEdge of event.data.payload.portState.portEdges) {
+                    const port = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    // port.setAttribute('href', `#${portTypeToResourceName[portEdge.portType]}-port`);
+                    port.textContent = portTypeToResourceName[portEdge.portType];
+                    port.setAttribute('dominant-baseline', 'middle');
+                    port.setAttribute('text-anchor', 'middle');
+                    const z = portEdge.hexEdge.z;
+                    let xOffset, yOffset;
+                    if (z == 0) {
+                        xOffset = -25 / 2;
+                        yOffset = -40;
+                    } else if (z == 1) {
+                        xOffset = -50;
+                        yOffset = 0;
+                    } else if (z == 2) {
+                        xOffset = -25 / 2;
+                        yOffset = 40;
+                    }
+                    port.setAttribute('x', portEdge.hexEdge.x * 100 + 50 * portEdge.hexEdge.y + xOffset + 50);
+                    port.setAttribute('y', portEdge.hexEdge.y * 75 + yOffset + 50);
+                    hexGrid.appendChild(port);
                 }
                 break;
             }
