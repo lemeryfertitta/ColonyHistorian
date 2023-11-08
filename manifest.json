@@ -10,7 +10,7 @@
         {
             "world": "MAIN",
             "js": [
-                "src/historian.js"
+                "src/recorder/recorder.js"
             ],
             "matches": [
                 "https://colonist.io/*"

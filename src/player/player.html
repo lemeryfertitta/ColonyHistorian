@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Colonist.io Game Replay</title>
+</head>
+
+<body>
+    <style>
+        #player-container {
+            margin: 20px 0;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 8px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+    </style>
+    <div id="board-container">
+        <svg viewBox="-200 -200 500 500">
+            <def>
+                <image id="grain" xlink:href="https://colonist.io/dist/images/tile_grain.svg" width="100"
+                    height="100" />
+                <image id="ore" xlink:href="https://colonist.io/dist/images/tile_ore.svg" width="100" height="100" />
+                <image id="lumber" xlink:href="https://colonist.io/dist/images/tile_lumber.svg" width="100"
+                    height="100" />
+                <image id="wool" xlink:href="https://colonist.io/dist/images/tile_wool.svg" width="100" height="100" />
+                <image id="brick" xlink:href="https://colonist.io/dist/images/tile_brick.svg" width="100"
+                    height="100" />
+                <image id="desert" xlink:href="https://colonist.io/dist/images/tile_desert.svg" width="100"
+                    height="100" />
+            </def>
+            <g id="hex-grid">
+
+            </g>
+        </svg>
+    </div>
+
+    <style>
+        #board-container {
+            width: 50%;
+        }
+
+        use {
+            fill: #ccc;
+            stroke: #333;
+            stroke-width: 2;
+        }
+    </style>
+    <div id="player-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Player</th>
+                    <th>Victory Points</th>
+                    <th>Resource Cards</th>
+                    <th>Development Cards</th>
+                    <th>Knights</th>
+                    <th>Road Segments</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr id="player-1">
+                    <td>Player 1</td>
+                    <td id="player-1-vp"></td>
+                    <td id="player-1-resources"></td>
+                    <td id="player-1-dev-cards"></td>
+                    <td id="player-1-knights"></td>
+                    <td id="player-1-roads"></td>
+                </tr>
+                <tr id="player-2">
+                    <td>Player 2</td>
+                    <td id="player-2-vp"></td>
+                    <td id="player-2-resources"></td>
+                    <td id="player-2-dev-cards"></td>
+                    <td id="player-2-knights"></td>
+                    <td id="player-2-roads"></td>
+                </tr>
+                <tr id="player-3">
+                    <td>Player 3</td>
+                    <td id="player-3-vp"></td>
+                    <td id="player-3-resources"></td>
+                    <td id="player-3-dev-cards"></td>
+                    <td id="player-3-knights"></td>
+                    <td id="player-3-roads"></td>
+                </tr>
+                <tr id="player-4">
+                    <td>Player 4</td>
+                    <td id="player-4-vp"></td>
+                    <td id="player-4-resources"></td>
+                    <td id="player-4-dev-cards"></td>
+                    <td id="player-4-knights"></td>
+                    <td id="player-4-roads"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <input type="file" id="game-log-input">
+    <button id="prev-btn" disabled>Prev</button>
+    <button id="next-btn" disabled>Next</button>
+    <div id="event-container">
+        <label for="event-index">Current Event Index:</label>
+        <input type="number" id="event-index" value="0" min="0">
+        <pre id="event-log"></pre>
+    </div>
+    <script src="player.js"></script>
+</body>
+
+</html>
