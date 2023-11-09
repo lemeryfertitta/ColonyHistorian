@@ -1,13 +1,3 @@
-let gameLog = null;
-let currentEventIndex = 0;
-const gameLogInput = document.getElementById('game-log-input');
-const prevBtn = document.getElementById('prev-btn');
-const nextBtn = document.getElementById('next-btn');
-const eventContainer = document.getElementById('event-container');
-const eventIndexInput = document.getElementById('event-index');
-const eventLog = document.getElementById('event-log');
-const hexGrid = document.getElementById('hex-grid');
-
 // Tile IDs in WebSocket messages
 const tileTypeToResourceName = {
     0: 'desert',
@@ -46,6 +36,18 @@ const PLACE_SETTLEMENT_EVENT = 16;
 // Scaling factor for hex grid
 const HEX_SIZE = 50;
 
+let gameLog = null;
+let currentEventIndex = 0;
+const gameLogInput = document.getElementById('game-log-input');
+const prevBtn = document.getElementById('prev-btn');
+const nextBtn = document.getElementById('next-btn');
+const eventContainer = document.getElementById('event-container');
+const eventIndexInput = document.getElementById('event-index');
+const eventLog = document.getElementById('event-log');
+const hexGrid = document.getElementById('hex-grid');
+const viewBox = document.getElementById('view-box');
+viewBox.setAttributeNS(null, "viewBox", `${getHexWidth() * -3} ${getHexHeight() * -3} ${getHexWidth() * 6} ${getHexHeight() * 6}`)
+
 
 eventIndexInput.addEventListener('change', (event) => {
     const newEventIndex = parseInt(event.target.value);
@@ -77,23 +79,23 @@ gameLogInput.addEventListener('change', (event) => {
                     setImageSource(hexFace, 'tile', resourceName);
                     hexFace.setAttribute('width', getHexWidth(HEX_SIZE));
                     hexFace.setAttribute('height', getHexHeight(HEX_SIZE));
-                    const drawCoordinates = hexFaceToCoords(tile.hexFace);
-                    hexFace.setAttribute('x', drawCoordinates.x);
-                    hexFace.setAttribute('y', drawCoordinates.y);
+                    const hexFaceCenter = hexFaceGridToPixel(tile.hexFace);
+                    hexFace.setAttribute('x', hexFaceCenter.x - getHexWidth() / 2);
+                    hexFace.setAttribute('y', hexFaceCenter.y - getHexHeight() / 2);
                     hexGrid.appendChild(hexFace);
 
                     if (resourceName != 'desert') {
                         const diceNumber = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                        diceNumber.setAttribute('x', drawCoordinates.x + getHexWidth() / 2);
-                        diceNumber.setAttribute('y', drawCoordinates.y + getHexHeight() / 2);
+                        diceNumber.setAttribute('x', hexFaceCenter.x);
+                        diceNumber.setAttribute('y', hexFaceCenter.y);
                         diceNumber.textContent = tile._diceNumber
                         diceNumber.setAttribute('dominant-baseline', 'middle');
                         diceNumber.setAttribute('text-anchor', 'middle');
                         hexGrid.appendChild(diceNumber);
 
                         const diceProbability = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                        diceProbability.setAttribute('x', drawCoordinates.x + getHexWidth() / 2);
-                        diceProbability.setAttribute('y', drawCoordinates.y + getHexHeight() / 2 + HEX_SIZE / 5);
+                        diceProbability.setAttribute('x', hexFaceCenter.x);
+                        diceProbability.setAttribute('y', hexFaceCenter.y + HEX_SIZE / 5);
                         diceProbability.textContent = "•".repeat(tile._diceProbability);
                         diceProbability.setAttribute('dominant-baseline', 'middle');
                         diceProbability.setAttribute('text-anchor', 'middle');
@@ -101,8 +103,8 @@ gameLogInput.addEventListener('change', (event) => {
                     } else {
                         const robber = document.createElementNS('http://www.w3.org/2000/svg', 'use');
                         setImageSource(robber, 'icon', 'robber');
-                        robber.setAttribute('x', drawCoordinates.x + getHexWidth() / 4);
-                        robber.setAttribute('y', drawCoordinates.y + getHexHeight() / 2);
+                        robber.setAttribute('x', hexFaceCenter.x + getHexWidth() / 4);
+                        robber.setAttribute('y', hexFaceCenter.y + getHexHeight() / 2);
                         hexGrid.appendChild(robber);
                     }
                 }
@@ -114,20 +116,9 @@ gameLogInput.addEventListener('change', (event) => {
                     port.textContent = portTypeToResourceName[portEdge.portType];
                     port.setAttribute('dominant-baseline', 'middle');
                     port.setAttribute('text-anchor', 'middle');
-                    const z = portEdge.hexEdge.z;
-                    let xOffset, yOffset;
-                    if (z == 0) {
-                        xOffset = -25 / 2;
-                        yOffset = -40;
-                    } else if (z == 1) {
-                        xOffset = -50;
-                        yOffset = 0;
-                    } else if (z == 2) {
-                        xOffset = -25 / 2;
-                        yOffset = 40;
-                    }
-                    port.setAttribute('x', portEdge.hexEdge.x * 100 + 50 * portEdge.hexEdge.y + xOffset + 50);
-                    port.setAttribute('y', portEdge.hexEdge.y * 75 + yOffset + 50);
+                    const coordinates = edgeMidpointPixel(hexEdgeGridToPixel(portEdge.hexEdge));
+                    port.setAttribute('x', coordinates.x);
+                    port.setAttribute('y', coordinates.y);
                     hexGrid.appendChild(port);
                 }
             } else if (event.data.type == PLAYER_UPDATE_EVENT) {
@@ -230,32 +221,82 @@ function removeEvents(startingIndex, finishingIndex) {
     }
 }
 
-function hexFaceToCoords(hexFace) {
+/**
+ * 
+ * @param {*} hexFace the grid coordinates of the hexagon face
+ * @returns the pixel coordinates of the center of the hexagon face
+ */
+function hexFaceGridToPixel(hexFace) {
     return {
         x: hexFace.x * getHexWidth() + getHexWidth() / 2 * hexFace.y,
-        y: hexFace.y * getHexHeight() * (3 / 4),
+        y: hexFace.y * getHexHeight() * (3 / 4)
     };
 }
 
-function hexEdgeToCoords(hexEdge) {
-    // TODO: Include z coordinate in calculation
-    return {
-        x: hexEdge.x * getHexWidth() + getHexWidth() / 2 * hexEdge.y,
-        y: hexEdge.y * getHexHeight(),
-    };
+/**
+ * 
+ * @param {*} hexCorner the grid coordinates of the hexagon corner. 
+ *  The corner is described by z of 0 or 1 which indicates top or bottom corner, respectively.
+ * @retruns the pixel coordinates of the hexagon corner
+ */
+function hexCornerGridToPixel(hexCorner) {
+    const cornerIndex = 2 + 3 * hexCorner.z;
+    return hexCornerToCoords(hexFaceGridToPixel(hexCorner), cornerIndex);
 }
 
-function hexCornerToCoords(hexCorner) {
-    // TODO: implement
+/**
+ * 
+ * @param {*} hexEdge the grid coordinates of the hexagon edge.
+ *  The edge is described by z from 0 to 2 which indicate the left edges from top to bottom, respectively.
+ * @returns the pixel coordinates of the two corners of the hexagon edge
+ */
+function hexEdgeGridToPixel(hexEdge) {
+    const cornerIndex = 5 - hexEdge.z;
     return {
-        x: 0, y: 0
+        p1: hexCornerToCoords(hexFaceGridToPixel(hexEdge), cornerIndex),
+        p2: hexCornerToCoords(hexFaceGridToPixel(hexEdge), cornerIndex - 1)
     }
 }
 
+/**
+ * 
+ * @param {*} edgePixels the pixel coordinates of the two corners of the hexagon edge
+ * @returns the pixel coordinates of the midpoint of the hexagon edge
+ */
+function edgeMidpointPixel(edgePixels) {
+    return {
+        x: (edgePixels.p1.x + edgePixels.p2.x) / 2,
+        y: (edgePixels.p1.y + edgePixels.p2.y) / 2
+    }
+}
+
+/**
+ * 
+ * @param {*} hexCoords x and y coordinates of the center of the hexagon
+ * @param {*} cornerIndex the corner of the hexagon to get the coordinates of. The corners are numbered 0-5, starting from the top right corner and going clockwise.
+ * @returns the pixel coordinates of the specified corner of the hexagon
+ */
+function hexCornerToCoords(hexCoords, cornerIndex) {
+    const angleDegrees = 60 * cornerIndex - 30;
+    const angleRadians = Math.PI / 180 * angleDegrees;
+    return {
+        x: hexCoords.x + HEX_SIZE * Math.cos(angleRadians),
+        y: hexCoords.y + HEX_SIZE * Math.sin(angleRadians)
+    };
+}
+
+/**
+ * @returns the pixel height of the hexagon
+ */
 function getHexHeight() {
     return 2 * HEX_SIZE;
 }
 
+/**
+ * 
+ * @returns the pixel width of the hexagon
+ */
+ */
 function getHexWidth() {
     return Math.sqrt(3) * HEX_SIZE;
 }
