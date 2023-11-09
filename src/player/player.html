@@ -34,30 +34,6 @@
     </style>
     <div id="board-container">
         <svg viewBox="-200 -200 600 600">
-            <def>
-                <image id="grain" xlink:href="https://colonist.io/dist/images/tile_grain.svg" width="100"
-                    height="100" />
-                <image id="ore" xlink:href="https://colonist.io/dist/images/tile_ore.svg" width="100" height="100" />
-                <image id="lumber" xlink:href="https://colonist.io/dist/images/tile_lumber.svg" width="100"
-                    height="100" />
-                <image id="wool" xlink:href="https://colonist.io/dist/images/tile_wool.svg" width="100" height="100" />
-                <image id="brick" xlink:href="https://colonist.io/dist/images/tile_brick.svg" width="100"
-                    height="100" />
-                <image id="desert" xlink:href="https://colonist.io/dist/images/tile_desert.svg" width="100"
-                    height="100" />
-                <image id="any-port" xlink:href="https://colonist.io/dist/images/port.svg" width="50" height="50" />
-                <image id="grain-port" xlink:href="https://colonist.io/dist/images/port_grain.svg" width="50"
-                    height="50" />
-                <image id="ore-port" xlink:href="https://colonist.io/dist/images/port_ore.svg" width="50" height="50" />
-                <image id="lumber-port" xlink:href="https://colonist.io/dist/images/port_lumber.svg" width="50"
-                    height="50" />
-                <image id="wool-port" xlink:href="https://colonist.io/dist/images/port_wool.svg" width="50"
-                    height="50" />
-                <image id="brick-port" xlink:href="https://colonist.io/dist/images/port_brick.svg" width="50"
-                    height="50" />
-                <image id="robber" xlink:href="https://colonist.io/dist/images/icon_robber.svg" width="25"
-                    height="25" />
-            </def>
             <g id="hex-grid">
             </g>
         </svg>
@@ -78,47 +54,15 @@
         <table>
             <thead>
                 <tr>
-                    <th>Player</th>
+                    <th>Player Name</th>
                     <th>Victory Points</th>
                     <th>Resource Cards</th>
                     <th>Development Cards</th>
                     <th>Knights</th>
-                    <th>Road Segments</th>
+                    <th>Longest Road</th>
                 </tr>
             </thead>
-            <tbody>
-                <tr id="player-1">
-                    <td>Player 1</td>
-                    <td id="player-1-vp"></td>
-                    <td id="player-1-resources"></td>
-                    <td id="player-1-dev-cards"></td>
-                    <td id="player-1-knights"></td>
-                    <td id="player-1-roads"></td>
-                </tr>
-                <tr id="player-2">
-                    <td>Player 2</td>
-                    <td id="player-2-vp"></td>
-                    <td id="player-2-resources"></td>
-                    <td id="player-2-dev-cards"></td>
-                    <td id="player-2-knights"></td>
-                    <td id="player-2-roads"></td>
-                </tr>
-                <tr id="player-3">
-                    <td>Player 3</td>
-                    <td id="player-3-vp"></td>
-                    <td id="player-3-resources"></td>
-                    <td id="player-3-dev-cards"></td>
-                    <td id="player-3-knights"></td>
-                    <td id="player-3-roads"></td>
-                </tr>
-                <tr id="player-4">
-                    <td>Player 4</td>
-                    <td id="player-4-vp"></td>
-                    <td id="player-4-resources"></td>
-                    <td id="player-4-dev-cards"></td>
-                    <td id="player-4-knights"></td>
-                    <td id="player-4-roads"></td>
-                </tr>
+            <tbody id="player-table">
             </tbody>
         </table>
     </div>
