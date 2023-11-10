@@ -27,14 +27,22 @@ const colorIdMap = {
     5: 'black',
 }
 
+const buildingTypeIdMap = {
+    1: 'settlement',
+    2: 'city'
+}
+
 // Event IDs in WebSocket messages
 const BOARD_DESCRIPTION_EVENT = 14;
 const PLAYER_UPDATE_EVENT = 12;
-const PLACE_ROAD_EVENT = 15;
-const PLACE_SETTLEMENT_EVENT = 16;
+const BUILD_EDGE_EVENT = 15;
+const BUILD_CORNER_EVENT = 16;
+const MOVE_ROBBER_EVENT = 17;
 
-// Scaling factor for hex grid
+// Scaling factors for images
 const HEX_SIZE = 50;
+const BUILDING_SIZE = 40;
+const ROBBER_SIZE = 35;
 
 let gameLog = null;
 let currentEventIndex = 0;
@@ -45,19 +53,17 @@ const eventContainer = document.getElementById('event-container');
 const eventIndexInput = document.getElementById('event-index');
 const eventLog = document.getElementById('event-log');
 const hexGrid = document.getElementById('hex-grid');
+const hexTilesGroup = document.getElementById('hex-tiles');
+const hexEdgesGroup = document.getElementById('hex-edges');
+const hexCornersGroup = document.getElementById('hex-corners');
 const viewBox = document.getElementById('view-box');
 viewBox.setAttributeNS(null, "viewBox", `${getHexWidth() * -3} ${getHexHeight() * -3} ${getHexWidth() * 6} ${getHexHeight() * 6}`)
+const robber = document.getElementById('robber');
 
 
 eventIndexInput.addEventListener('change', (event) => {
-    const newEventIndex = parseInt(event.target.value);
-    if (newEventIndex < currentEventIndex) {
-        removeEvents(newEventIndex, currentEventIndex);
-    } else if (newEventIndex > currentEventIndex) {
-        drawEvents(currentEventIndex, newEventIndex);
-    } else {
-        console.log("Event index did not change");
-    }
+    const newEventIndex = Math.min(gameLog.length - 1, Math.max(parseInt(event.target.value), 0));
+    processEvents(currentEventIndex, newEventIndex);
     currentEventIndex = newEventIndex;
     displayCurrentEventLog();
 });
@@ -82,8 +88,9 @@ gameLogInput.addEventListener('change', (event) => {
                     const hexFaceCenter = hexFaceGridToPixel(tile.hexFace);
                     hexFace.setAttribute('x', hexFaceCenter.x - getHexWidth() / 2);
                     hexFace.setAttribute('y', hexFaceCenter.y - getHexHeight() / 2);
-                    hexGrid.appendChild(hexFace);
+                    hexTilesGroup.appendChild(hexFace);
 
+                    // Draw dice number and probability dots
                     if (resourceName != 'desert') {
                         const diceNumber = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                         diceNumber.setAttribute('x', hexFaceCenter.x);
@@ -91,7 +98,7 @@ gameLogInput.addEventListener('change', (event) => {
                         diceNumber.textContent = tile._diceNumber
                         diceNumber.setAttribute('dominant-baseline', 'middle');
                         diceNumber.setAttribute('text-anchor', 'middle');
-                        hexGrid.appendChild(diceNumber);
+                        hexTilesGroup.appendChild(diceNumber);
 
                         const diceProbability = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                         diceProbability.setAttribute('x', hexFaceCenter.x);
@@ -99,27 +106,27 @@ gameLogInput.addEventListener('change', (event) => {
                         diceProbability.textContent = "•".repeat(tile._diceProbability);
                         diceProbability.setAttribute('dominant-baseline', 'middle');
                         diceProbability.setAttribute('text-anchor', 'middle');
-                        hexGrid.appendChild(diceProbability);
+                        hexTilesGroup.appendChild(diceProbability);
                     } else {
-                        const robber = document.createElementNS('http://www.w3.org/2000/svg', 'use');
                         setImageSource(robber, 'icon', 'robber');
-                        robber.setAttribute('x', hexFaceCenter.x + getHexWidth() / 4);
-                        robber.setAttribute('y', hexFaceCenter.y + getHexHeight() / 2);
-                        hexGrid.appendChild(robber);
+                        robber.setAttribute('width', ROBBER_SIZE);
+                        robber.setAttribute('height', ROBBER_SIZE);
+                        moveRobber(tile.hexFace);
                     }
                 }
 
                 // Draw ports
                 for (const portEdge of event.data.payload.portState.portEdges) {
                     const port = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    // TODO: Draw port icon as center of outer hexFace with lines to the two corners defining the port
                     // port.setAttribute('href', `#${portTypeToResourceName[portEdge.portType]}-port`);
                     port.textContent = portTypeToResourceName[portEdge.portType];
                     port.setAttribute('dominant-baseline', 'middle');
                     port.setAttribute('text-anchor', 'middle');
-                    const coordinates = edgeMidpointPixel(hexEdgeGridToPixel(portEdge.hexEdge));
+                    const coordinates = edgeMidpointPixel(hexEdgeGridToPixels(portEdge.hexEdge));
                     port.setAttribute('x', coordinates.x);
                     port.setAttribute('y', coordinates.y);
-                    hexGrid.appendChild(port);
+                    hexTilesGroup.appendChild(port);
                 }
             } else if (event.data.type == PLAYER_UPDATE_EVENT) {
                 const playerTable = document.getElementById('player-table');
@@ -164,7 +171,7 @@ document.addEventListener('keydown', (event) => {
 
 function prevEvent() {
     if (currentEventIndex > 0) {
-        removeEvents(currentEventIndex, currentEventIndex - 1);
+        processEvents(currentEventIndex, currentEventIndex - 1);
         currentEventIndex--;
         displayCurrentEventLog();
     } else {
@@ -175,8 +182,8 @@ function prevEvent() {
 
 function nextEvent() {
     if (currentEventIndex < gameLog.length - 1) {
-        drawEvents(currentEventIndex, currentEventIndex + 1);
         currentEventIndex++;
+        processEvents(currentEventIndex, currentEventIndex + 1);
         displayCurrentEventLog();
     } else {
         console.log("Reached end of game log");
@@ -189,35 +196,47 @@ function displayCurrentEventLog() {
     eventIndexInput.value = currentEventIndex;
 }
 
-function drawEvents(startingIndex, finishingIndex) {
-    for (let eventIndex = startingIndex; eventIndex < finishingIndex; eventIndex++) {
+/**
+ * 
+ * @param {*} startingIndex the index in the game log to start processing events from
+ * @param {*} finishingIndex the index in the game log to stop processing events at
+ */
+function processEvents(startingIndex, finishingIndex) {
+    const isReversed = startingIndex > finishingIndex;
+    for (let eventIndex = startingIndex; eventIndex != finishingIndex; eventIndex += (isReversed ? -1 : 1)) {
         const event = gameLog[eventIndex];
-        if (event.data.type == PLACE_SETTLEMENT_EVENT) {
-            const payload = event.data.payload[0];
-            const settlement = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-            settlement.setAttribute('href', `#settlement-${colorIdMap[payload.owner]}`);
-            const z = payload.hexCorner.z;
-            let xOffset, yOffset;
-            if (z == 0) {
-                xOffset = -25 / 2;
-                yOffset = -40;
-            } else if (z == 1) {
-                xOffset = -50;
-                yOffset = 0;
-            } else if (z == 2) {
-                xOffset = -25 / 2;
-                yOffset = 40;
+        if (event.data) {
+            let payload = null;
+            switch (event.data.type) {
+                case BUILD_CORNER_EVENT:
+                    payload = event.data.payload[0];
+                    if (isReversed) {
+                        removeCornerBuilding(payload.hexCorner, payload.owner, payload.buildingType);
+                    } else {
+                        drawCornerBuilding(payload.hexCorner, payload.owner, payload.buildingType);
+                    }
+                    break;
+                case BUILD_EDGE_EVENT:
+                    payload = event.data.payload[0];
+                    if (isReversed) {
+                        removeEdgeBuilding(payload.hexEdge);
+                    } else {
+                        drawEdgeBuilding(payload.hexEdge, payload.owner);
+                    }
+                    break;
+                case MOVE_ROBBER_EVENT:
+                    if (isReversed) {
+                        moveRobber(event.data.payload[0].hexFace);
+                    } else {
+                        moveRobber(event.data.payload[1].hexFace);
+                    }
+
+                default:
+                    console.log(`Unhandled event type ${event.data.type}`);
             }
-            settlement.setAttribute('x', payload.hexCorner.x * 100 + 50 * payload.hexCorner.y + xOffset);
-            settlement.setAttribute('y', payload.hexCorner.y * 75 + 50 + yOffset);
-            hexGrid.appendChild(settlement);
+        } else {
+            console.log(`Event ${eventIndex} has no data`);
         }
-    }
-}
-
-function removeEvents(startingIndex, finishingIndex) {
-    for (let eventIndex = startingIndex; eventIndex > finishingIndex; eventIndex--) {
-
     }
 }
 
@@ -240,7 +259,7 @@ function hexFaceGridToPixel(hexFace) {
  * @retruns the pixel coordinates of the hexagon corner
  */
 function hexCornerGridToPixel(hexCorner) {
-    const cornerIndex = 2 + 3 * hexCorner.z;
+    const cornerIndex = 5 - 3 * hexCorner.z;
     return hexCornerToCoords(hexFaceGridToPixel(hexCorner), cornerIndex);
 }
 
@@ -250,7 +269,7 @@ function hexCornerGridToPixel(hexCorner) {
  *  The edge is described by z from 0 to 2 which indicate the left edges from top to bottom, respectively.
  * @returns the pixel coordinates of the two corners of the hexagon edge
  */
-function hexEdgeGridToPixel(hexEdge) {
+function hexEdgeGridToPixels(hexEdge) {
     const cornerIndex = 5 - hexEdge.z;
     return {
         p1: hexCornerToCoords(hexFaceGridToPixel(hexEdge), cornerIndex),
@@ -296,15 +315,101 @@ function getHexHeight() {
  * 
  * @returns the pixel width of the hexagon
  */
- */
 function getHexWidth() {
     return Math.sqrt(3) * HEX_SIZE;
 }
 
+/**
+ * 
+ * @param {*} element the DOM element to set the href attribute of
+ * @param {*} image_type the linked image name prefix
+ * @param {*} image_subtype the linked image name suffix (optional)
+ */
 function setImageSource(element, image_type, image_subtype,) {
     const suffix = image_subtype ? `_${image_subtype}` : '';
     element.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `https://colonist.io/dist/images/${image_type}${suffix}.svg`);
 }
 
+/**
+ * 
+ * @param {*} hexCorner the grid coordinates for the corner of the settlement
+ * @param {*} color the id of the player who owns the settlement
+ */
+function drawCornerBuilding(hexCorner, color, buildingTypeId) {
+    const buildingType = buildingTypeIdMap[buildingTypeId];
+    const buildingId = getDrawnElementId('corner', hexCorner);
+    const existingBuilding = document.getElementById(buildingId);
+    if (existingBuilding != null) {
+        hexCornersGroup.removeChild(existingBuilding);
+    }
+    const building = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+    setImageSource(building, buildingType, colorIdMap[color]);
+    building.id = buildingId;
+    building.setAttribute('width', BUILDING_SIZE);
+    building.setAttribute('height', BUILDING_SIZE);
+    const coordinates = hexCornerGridToPixel(hexCorner);
+    building.setAttribute('x', coordinates.x - BUILDING_SIZE / 2);
+    building.setAttribute('y', coordinates.y - BUILDING_SIZE / 2);
+    hexCornersGroup.appendChild(building);
+}
+
+/**
+ * 
+ * @param {*} hexCorner the grid coordinates for the corner of the settlement
+ */
+function removeCornerBuilding(hexCorner, color, buildingTypeId) {
+    const buildingType = buildingTypeIdMap[buildingTypeId];
+    const buildingId = getDrawnElementId('corner', hexCorner);
+    const building = document.getElementById(buildingId);
+    if (building) {
+        hexCornersGroup.removeChild(building);
+        if (buildingType == 'city') {
+            // When a city is removed, it needs to be replaced with its corresponding settlement
+            drawCornerBuilding(hexCorner, color, 1);
+        }
+    } else {
+        console.log(`Could not find building with id ${buildingId}`);
+    }
+
+}
+
+function drawEdgeBuilding(hexEdge, color) {
+    const buildingId = getDrawnElementId('edge', hexEdge);
+    const existingBuilding = document.getElementById(buildingId);
+    if (existingBuilding != null) {
+        hexEdgesGroup.removeChild(existingBuilding);
+    }
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.id = buildingId;
+    const coordinates = hexEdgeGridToPixels(hexEdge);
+    line.setAttribute('x1', coordinates.p1.x);
+    line.setAttribute('y1', coordinates.p1.y);
+    line.setAttribute('x2', coordinates.p2.x);
+    line.setAttribute('y2', coordinates.p2.y);
+    line.setAttribute('stroke', colorIdMap[color]);
+    line.setAttribute('stroke-width', 10);
+    hexEdgesGroup.appendChild(line);
+}
+
+function removeEdgeBuilding(hexEdge) {
+    const buildingId = getDrawnElementId('edge', hexEdge);
+    const building = document.getElementById(buildingId);
+    if (building) {
+        hexEdgesGroup.removeChild(building);
+    } else {
+        console.log(`Could not find building with id ${buildingId}`);
+    }
+}
+
+function moveRobber(targetHexFace) {
+    const robber = document.getElementById('robber');
+    const coordinates = hexFaceGridToPixel(targetHexFace);
+    robber.setAttribute('x', coordinates.x - getHexWidth() / 2);
+    robber.setAttribute('y', coordinates.y - ROBBER_SIZE / 2);
+}
+
+function getDrawnElementId(type, coordinates) {
+    return `${type}-${coordinates.x}-${coordinates.y}-${coordinates.z}`
+}
 prevBtn.addEventListener('click', prevEvent);
 nextBtn.addEventListener('click', nextEvent);
