@@ -8,6 +8,26 @@
 
 <body>
     <style>
+        *,
+        *:after,
+        *:before {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0
+        }
+
+        main {
+            width: 100%;
+            height: 100%;
+
+            display: -webkit-flex;
+            display: flex;
+            -webkit-flex-flow: column nowrap;
+            flex-flow: column nowrap;
+        }
+
         #player-container {
             margin: 20px 0;
         }
@@ -31,52 +51,90 @@
         tr:nth-child(even) {
             background-color: #f2f2f2;
         }
-    </style>
-    <div id="board-container">
-        <svg id="view-box">
-            <g id="hex-grid">
-                <g id="hex-tiles"></g>
-                <g id="hex-edges"></g>
-                <g id="hex-corners"></g>
-                <image id="robber"></image>
-            </g>
-        </svg>
-    </div>
 
-    <style>
         #board-container {
+            height: 100%;
             width: 50%;
+            float: left;
         }
 
-        use {
-            fill: #ccc;
-            stroke: #333;
-            stroke-width: 2;
+        #right-container {
+            height: 100%;
+            width: 50%;
+            float: right;
+            overflow-x: hidden;
+            overflow-y: scroll;
+            word-break: break-all;
+            font-family: open sans, sans-serif;
+            font-size: 1rem;
+            display: block;
+        }
+
+        #chat-container {
+            height: 15%;
+            border: solid 1px black;
+            margin: 0;
+            padding: auto;
+        }
+
+        #controls-container {
+            height: 10%;
+        }
+
+        #player-container {
+            height: 50%
+        }
+
+        #log-container {
+            height: 15%;
+        }
+
+        #resource-container {
+            height: 10%;
         }
     </style>
-    <div id="player-container">
-        <table>
-            <thead>
-                <tr>
-                    <th>Player Name</th>
-                    <th>Victory Points</th>
-                    <th>Resource Cards</th>
-                    <th>Development Cards</th>
-                    <th>Knights</th>
-                    <th>Longest Road</th>
-                </tr>
-            </thead>
-            <tbody id="player-table">
-            </tbody>
-        </table>
-    </div>
-    <input type="file" id="game-log-input">
-    <button id="prev-btn" disabled>Prev</button>
-    <button id="next-btn" disabled>Next</button>
-    <div id="event-container">
-        <label for="event-index">Current Event Index:</label>
-        <input type="number" id="event-index" value="0" min="0">
-        <pre id="event-log"></pre>
+    <div>
+        <div id="board-container">
+            <svg id="view-box">
+                <g id="hex-grid">
+                    <g id="hex-tiles"></g>
+                    <g id="hex-edges"></g>
+                    <g id="hex-corners"></g>
+                    <image id="robber"></image>
+                </g>
+            </svg>
+        </div>
+        <div id="right-container">
+            <div id="controls-container">
+                <input type="file" id="game-log-input">
+                <button id="prev-btn" disabled>Prev</button>
+                <button id="next-btn" disabled>Next</button>
+                <label for="event-index">Current Event Index:</label>
+                <input type="range" id="event-index" value="0" min="0" class="slider">
+            </div>
+            <div id="log-container"></div>
+            <div id="chat-container"></div>
+            <div id="resource-container"></div>
+            <div id="player-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Player Name</th>
+                            <th>Victory Points</th>
+                            <th>Resource Cards</th>
+                            <th>Development Cards</th>
+                            <th>Knights</th>
+                            <th>Longest Road</th>
+                        </tr>
+                    </thead>
+                    <tbody id="player-table">
+                    </tbody>
+                </table>
+            </div>
+            <div id="event-container">
+                <pre id="event-log"></pre>
+            </div>
+        </div>
     </div>
     <script src="player.js"></script>
 </body>

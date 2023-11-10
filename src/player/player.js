@@ -38,6 +38,8 @@ const PLAYER_UPDATE_EVENT = 12;
 const BUILD_EDGE_EVENT = 15;
 const BUILD_CORNER_EVENT = 16;
 const MOVE_ROBBER_EVENT = 17;
+const CHAT_MESSAGE_EVENT = 73;
+const TRADE_EVENT = 43;
 
 // Scaling factors for images
 const HEX_SIZE = 50;
@@ -49,7 +51,7 @@ let currentEventIndex = 0;
 const gameLogInput = document.getElementById('game-log-input');
 const prevBtn = document.getElementById('prev-btn');
 const nextBtn = document.getElementById('next-btn');
-const eventContainer = document.getElementById('event-container');
+const chatContainer = document.getElementById('chat-container');
 const eventIndexInput = document.getElementById('event-index');
 const eventLog = document.getElementById('event-log');
 const hexGrid = document.getElementById('hex-grid');
@@ -61,7 +63,7 @@ viewBox.setAttributeNS(null, "viewBox", `${getHexWidth() * -3} ${getHexHeight() 
 const robber = document.getElementById('robber');
 
 
-eventIndexInput.addEventListener('change', (event) => {
+eventIndexInput.addEventListener('input', (event) => {
     const newEventIndex = Math.min(gameLog.length - 1, Math.max(parseInt(event.target.value), 0));
     processEvents(currentEventIndex, newEventIndex);
     currentEventIndex = newEventIndex;
@@ -230,9 +232,19 @@ function processEvents(startingIndex, finishingIndex) {
                     } else {
                         moveRobber(event.data.payload[1].hexFace);
                     }
+                case CHAT_MESSAGE_EVENT:
+                    if (event.data.payload.text != null) {
+                        const message = event.data.payload.text.options.value;
+                        const username = event.data.payload.username;
+                        if (isReversed) {
+                            removeChatMessage(eventIndex);
+                        } else {
+                            addChatMessage(message, username, eventIndex);
+                        }
+                    }
 
                 default:
-                    console.log(`Unhandled event type ${event.data.type}`);
+                    console.debug(`Unhandled event type ${event.data.type}`);
             }
         } else {
             console.log(`Event ${eventIndex} has no data`);
@@ -356,6 +368,8 @@ function drawCornerBuilding(hexCorner, color, buildingTypeId) {
 /**
  * 
  * @param {*} hexCorner the grid coordinates for the corner of the settlement
+ * @param {*} color the id of the player who owns the building
+ * @param {*} buildingTypeId the id of the building type to draw
  */
 function removeCornerBuilding(hexCorner, color, buildingTypeId) {
     const buildingType = buildingTypeIdMap[buildingTypeId];
@@ -408,8 +422,38 @@ function moveRobber(targetHexFace) {
     robber.setAttribute('y', coordinates.y - ROBBER_SIZE / 2);
 }
 
-function getDrawnElementId(type, coordinates) {
-    return `${type}-${coordinates.x}-${coordinates.y}-${coordinates.z}`
+function addChatMessage(message, username, eventIndex) {
+    const messageId = getChatMessageId(eventIndex);
+    const existingMessage = document.getElementById(messageId);
+    if (existingMessage != null) {
+        chatContainer.removeChild(existingMessage);
+    }
+    const messageDiv = document.createElement('div');
+    messageDiv.id = messageId;
+    messageDiv.class = 'chat-message';
+    const messageSpan = document.createElement('span');
+    messageSpan.textContent = `${username}: ${message}`;
+    messageDiv.appendChild(messageSpan);
+    chatContainer.appendChild(messageDiv);
 }
+
+function removeChatMessage(eventIndex) {
+    const messageId = getChatMessageId(eventIndex);
+    const messageElement = document.getElementById(messageId);
+    if (messageElement) {
+        chatContainer.removeChild(messageElement);
+    } else {
+        console.log(`Could not find message with id ${messageId}`);
+    }
+}
+
+function getDrawnElementId(type, coordinates) {
+    return `${type}-${coordinates.x}-${coordinates.y}-${coordinates.z}`;
+}
+
+function getChatMessageId(eventIndex) {
+    return `chat-message-${eventIndex}`;
+}
+
 prevBtn.addEventListener('click', prevEvent);
 nextBtn.addEventListener('click', nextEvent);
