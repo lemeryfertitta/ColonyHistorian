@@ -32,26 +32,6 @@
             margin: 20px 0;
         }
 
-        table {
-            border-collapse: collapse;
-            width: 100%;
-        }
-
-        th,
-        td {
-            text-align: left;
-            padding: 8px;
-            border-bottom: 1px solid #ddd;
-        }
-
-        th {
-            background-color: #f2f2f2;
-        }
-
-        tr:nth-child(even) {
-            background-color: #f2f2f2;
-        }
-
         #board-container {
             height: 100%;
             width: 50%;
@@ -70,27 +50,41 @@
             display: block;
         }
 
-        #chat-container {
-            height: 15%;
+        #log-container {
+            height: 15vh;
+            width: 100%;
+            overflow-y: scroll;
+            flex: 1 auto;
             border: solid 1px black;
             margin: 0;
             padding: auto;
+            background: linear-gradient(11deg, rgba(221, 221, 221, 1) 0%, rgba(243, 243, 245, 1) 100%);
+        }
+
+        #chat-container {
+            height: 15vh;
+            width: 100%;
+            overflow-y: scroll;
+            flex: 1 auto;
+            border: solid 1px black;
+            margin: 0;
+            padding: auto;
+            background: linear-gradient(11deg, rgba(221, 221, 221, 1) 0%, rgba(243, 243, 245, 1) 100%);
         }
 
         #controls-container {
-            height: 10%;
+            height: 5vh;
+            background: linear-gradient(11deg, rgba(221, 221, 221, 1) 0%, rgba(243, 243, 245, 1) 100%);
         }
 
         #player-container {
-            height: 50%
-        }
-
-        #log-container {
-            height: 15%;
+            height: 50vh;
+            background: linear-gradient(11deg, rgba(221, 221, 221, 1) 0%, rgba(243, 243, 245, 1) 100%);
         }
 
         #resource-container {
-            height: 10%;
+            height: 10vh;
+            background: linear-gradient(11deg, rgba(221, 221, 221, 1) 0%, rgba(243, 243, 245, 1) 100%);
         }
     </style>
     <div>

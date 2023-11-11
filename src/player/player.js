@@ -24,6 +24,7 @@ const colorIdMap = {
     1: 'red',
     2: 'blue',
     3: 'orange',
+    4: 'green',
     5: 'black',
 }
 
@@ -31,6 +32,10 @@ const buildingTypeIdMap = {
     1: 'settlement',
     2: 'city'
 }
+
+const colorToUsernameMap = {
+    0: 'bank'
+};
 
 // Event IDs in WebSocket messages
 const BOARD_DESCRIPTION_EVENT = 14;
@@ -40,6 +45,16 @@ const BUILD_CORNER_EVENT = 16;
 const MOVE_ROBBER_EVENT = 17;
 const CHAT_MESSAGE_EVENT = 73;
 const TRADE_EVENT = 43;
+const DISTRIBUTION_EVENT = 28;
+const TRADE_OFFER_EVENT = 36;
+const TRADE_RESPONSE_EVENT = 37;
+const BANK_STATE_EVENT = 10;
+const DICE_ROLL_EVENT = 11;
+const GAME_LOG_EVENT = 7;
+
+// Strings in game log messages
+const PLAYER_ROLLED_DICE = "strings:socket.playerRolledDice";
+const PLAYER_MOVED_ROBBER = "strings:socket.playerMovedRobber";
 
 // Scaling factors for images
 const HEX_SIZE = 50;
@@ -52,6 +67,7 @@ const gameLogInput = document.getElementById('game-log-input');
 const prevBtn = document.getElementById('prev-btn');
 const nextBtn = document.getElementById('next-btn');
 const chatContainer = document.getElementById('chat-container');
+const logContainer = document.getElementById('log-container');
 const eventIndexInput = document.getElementById('event-index');
 const eventLog = document.getElementById('event-log');
 const hexGrid = document.getElementById('hex-grid');
@@ -133,6 +149,7 @@ gameLogInput.addEventListener('change', (event) => {
             } else if (event.data.type == PLAYER_UPDATE_EVENT) {
                 const playerTable = document.getElementById('player-table');
                 for (const player of event.data.payload) {
+                    colorToUsernameMap[player.color] = player.username;
                     const row = document.createElement('tr');
                     const nameCell = document.createElement('td');
                     nameCell.textContent = player.username;
@@ -196,6 +213,8 @@ function displayCurrentEventLog() {
     const eventStr = JSON.stringify(gameLog[currentEventIndex], null, 2);
     eventLog.innerHTML = `<pre>${eventStr}</pre>`;
     eventIndexInput.value = currentEventIndex;
+    nextBtn.disabled = currentEventIndex == gameLog.length - 1;
+    prevBtn.disabled = currentEventIndex == 0;
 }
 
 /**
@@ -214,16 +233,20 @@ function processEvents(startingIndex, finishingIndex) {
                     payload = event.data.payload[0];
                     if (isReversed) {
                         removeCornerBuilding(payload.hexCorner, payload.owner, payload.buildingType);
+                        removeMessage(eventIndex, logContainer);
                     } else {
                         drawCornerBuilding(payload.hexCorner, payload.owner, payload.buildingType);
+                        addMessage(`built a ${buildingTypeIdMap[payload.buildingType]}`, colorToUsernameMap[payload.owner], eventIndex, logContainer);
                     }
                     break;
                 case BUILD_EDGE_EVENT:
                     payload = event.data.payload[0];
                     if (isReversed) {
                         removeEdgeBuilding(payload.hexEdge);
+                        removeMessage(eventIndex, logContainer)
                     } else {
                         drawEdgeBuilding(payload.hexEdge, payload.owner);
+                        addMessage(`built a road`, colorToUsernameMap[payload.owner], eventIndex, logContainer);
                     }
                     break;
                 case MOVE_ROBBER_EVENT:
@@ -232,17 +255,47 @@ function processEvents(startingIndex, finishingIndex) {
                     } else {
                         moveRobber(event.data.payload[1].hexFace);
                     }
+                    break;
                 case CHAT_MESSAGE_EVENT:
-                    if (event.data.payload.text != null) {
-                        const message = event.data.payload.text.options.value;
-                        const username = event.data.payload.username;
+                    payload = event.data.payload;
+                    if (payload.text != null) {
+                        const message = payload.text.options.value;
+                        const username = payload.username;
                         if (isReversed) {
-                            removeChatMessage(eventIndex);
+                            removeMessage(eventIndex, chatContainer);
                         } else {
-                            addChatMessage(message, username, eventIndex);
+                            addMessage(message, username, eventIndex, chatContainer);
                         }
                     }
-
+                    break;
+                case GAME_LOG_EVENT:
+                    payload = event.data.payload;
+                    if (payload.text != null) {
+                        const key = payload.text.key;
+                        if (isReversed) {
+                            removeMessage(eventIndex, logContainer);
+                        }
+                        switch (key) {
+                            case PLAYER_ROLLED_DICE:
+                                addMessage(`rolled ${payload.text.options.diceString}`, payload.username, eventIndex, logContainer);
+                                break;
+                            case PLAYER_MOVED_ROBBER:
+                                addMessage(`moved the robber to ${payload.text.options.tileChatString}`, payload.username, eventIndex, logContainer);
+                                break;
+                            default:
+                                console.debug(`Unhandled game log key ${key}`);
+                        }
+                    } else {
+                        console.debug(`Game log event ${eventIndex} with payload ${payload} has no text`);
+                    }
+                    break;
+                case TRADE_EVENT:
+                    payload = event.data.payload;
+                    const givingPlayer = colorToUsernameMap[payload.givingPlayer];
+                    const receivingPlayer = colorToUsernameMap[payload.receivingPlayer];
+                    const givingResources = payload.givingCards;
+                    break;
+                    // TODO: Finish
                 default:
                     console.debug(`Unhandled event type ${event.data.type}`);
             }
@@ -422,11 +475,11 @@ function moveRobber(targetHexFace) {
     robber.setAttribute('y', coordinates.y - ROBBER_SIZE / 2);
 }
 
-function addChatMessage(message, username, eventIndex) {
-    const messageId = getChatMessageId(eventIndex);
+function addMessage(message, username, eventIndex, container) {
+    const messageId = getMessageId(eventIndex);
     const existingMessage = document.getElementById(messageId);
     if (existingMessage != null) {
-        chatContainer.removeChild(existingMessage);
+        container.removeChild(existingMessage);
     }
     const messageDiv = document.createElement('div');
     messageDiv.id = messageId;
@@ -434,14 +487,16 @@ function addChatMessage(message, username, eventIndex) {
     const messageSpan = document.createElement('span');
     messageSpan.textContent = `${username}: ${message}`;
     messageDiv.appendChild(messageSpan);
-    chatContainer.appendChild(messageDiv);
+    container.appendChild(messageDiv);
+    container.scrollTop = container.scrollHeight;
 }
 
-function removeChatMessage(eventIndex) {
-    const messageId = getChatMessageId(eventIndex);
+function removeMessage(eventIndex, container) {
+    const messageId = getMessageId(eventIndex);
     const messageElement = document.getElementById(messageId);
     if (messageElement) {
-        chatContainer.removeChild(messageElement);
+        container.removeChild(messageElement);
+        container.scrollTop = container.scrollHeight;
     } else {
         console.log(`Could not find message with id ${messageId}`);
     }
@@ -451,8 +506,8 @@ function getDrawnElementId(type, coordinates) {
     return `${type}-${coordinates.x}-${coordinates.y}-${coordinates.z}`;
 }
 
-function getChatMessageId(eventIndex) {
-    return `chat-message-${eventIndex}`;
+function getMessageId(eventIndex) {
+    return `message-${eventIndex}`;
 }
 
 prevBtn.addEventListener('click', prevEvent);
