@@ -37,20 +37,26 @@ const colorToUsernameMap = {
     0: 'bank'
 };
 
-// Event IDs in WebSocket messages
-const BOARD_DESCRIPTION_EVENT = 14;
-const PLAYER_UPDATE_EVENT = 12;
-const BUILD_EDGE_EVENT = 15;
-const BUILD_CORNER_EVENT = 16;
-const MOVE_ROBBER_EVENT = 17;
-const CHAT_MESSAGE_EVENT = 73;
-const TRADE_EVENT = 43;
-const DISTRIBUTION_EVENT = 28;
-const TRADE_OFFER_EVENT = 36;
-const TRADE_RESPONSE_EVENT = 37;
-const BANK_STATE_EVENT = 10;
-const DICE_ROLL_EVENT = 11;
-const GAME_LOG_EVENT = 7;
+const eventHandlers = {
+    7: handleGameLogEvent,
+    10: handleBankStateEvent,
+    11: handleDiceRollEvent,
+    12: handlePlayerUpdateEvent,
+    14: handleBoardDescriptionEvent,
+    15: handleBuildEdgeEvent,
+    16: handleBuildCornerEvent,
+    17: handleMoveRobberEvent,
+    28: handleDistributionEvent,
+    36: handleTradeOfferEvent,
+    37: handleTradeResponseEvent,
+    43: handleTradeEvent,
+    44: handleGameRulesEvent,
+    73: handleChatMessageEvent,
+};
+
+const GAME_RULES_EVENT = 44;
+const PRE_GAME_EVENT_INDEX = -1;
+
 
 // Strings in game log messages
 const PLAYER_ROLLED_DICE = "strings:socket.playerRolledDice";
@@ -61,7 +67,7 @@ const HEX_SIZE = 50;
 const BUILDING_SIZE = 40;
 const ROBBER_SIZE = 35;
 
-let gameLog = null;
+let gameLog = [];
 let currentEventIndex = 0;
 const gameLogInput = document.getElementById('game-log-input');
 const prevBtn = document.getElementById('prev-btn');
@@ -90,88 +96,24 @@ gameLogInput.addEventListener('change', (event) => {
     const file = event.target.files[0];
     const reader = new FileReader();
     reader.onload = () => {
-        gameLog = JSON.parse(reader.result);
-        for (let i = 0; i < gameLog.length; i++) {
-            const event = gameLog[i];
-            currentEventIndex = i;
-            if (event.data.type == BOARD_DESCRIPTION_EVENT) {
-                // Draw pointy-top hex grid
-                // See https://www.redblobgames.com/grids/hexagons/ for explanation of hex grid coordinates
-                for (const tile of event.data.payload.tileState.tiles) {
-                    const resourceName = tileTypeToResourceName[tile.tileType];
-                    const hexFace = document.createElementNS('http://www.w3.org/2000/svg', 'image');
-                    setImageSource(hexFace, 'tile', resourceName);
-                    hexFace.setAttribute('width', getHexWidth(HEX_SIZE));
-                    hexFace.setAttribute('height', getHexHeight(HEX_SIZE));
-                    const hexFaceCenter = hexFaceGridToPixel(tile.hexFace);
-                    hexFace.setAttribute('x', hexFaceCenter.x - getHexWidth() / 2);
-                    hexFace.setAttribute('y', hexFaceCenter.y - getHexHeight() / 2);
-                    hexTilesGroup.appendChild(hexFace);
+        const fullGameLog = JSON.parse(reader.result);
+        let reachedGameRulesEvent = false;
 
-                    // Draw dice number and probability dots
-                    if (resourceName != 'desert') {
-                        const diceNumber = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                        diceNumber.setAttribute('x', hexFaceCenter.x);
-                        diceNumber.setAttribute('y', hexFaceCenter.y);
-                        diceNumber.textContent = tile._diceNumber
-                        diceNumber.setAttribute('dominant-baseline', 'middle');
-                        diceNumber.setAttribute('text-anchor', 'middle');
-                        hexTilesGroup.appendChild(diceNumber);
-
-                        const diceProbability = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                        diceProbability.setAttribute('x', hexFaceCenter.x);
-                        diceProbability.setAttribute('y', hexFaceCenter.y + HEX_SIZE / 5);
-                        diceProbability.textContent = "•".repeat(tile._diceProbability);
-                        diceProbability.setAttribute('dominant-baseline', 'middle');
-                        diceProbability.setAttribute('text-anchor', 'middle');
-                        hexTilesGroup.appendChild(diceProbability);
-                    } else {
-                        setImageSource(robber, 'icon', 'robber');
-                        robber.setAttribute('width', ROBBER_SIZE);
-                        robber.setAttribute('height', ROBBER_SIZE);
-                        moveRobber(tile.hexFace);
-                    }
+        // Pprocess all events up to the game rules event and store the remainder in the gameLog
+        for (let eventIndex = 0; eventIndex < fullGameLog.length; eventIndex++) {
+            const event = fullGameLog[eventIndex];
+            const data = event.data;
+            const eventType = data.type;
+            const eventHandler = eventHandlers[eventType];
+            if (eventHandler) {
+                if (reachedGameRulesEvent) {
+                    gameLog.push(fullGameLog[eventIndex]);
+                } else {
+                    eventHandler(data, false, PRE_GAME_EVENT_INDEX);
+                    reachedGameRulesEvent = eventType == GAME_RULES_EVENT;
                 }
-
-                // Draw ports
-                for (const portEdge of event.data.payload.portState.portEdges) {
-                    const port = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                    // TODO: Draw port icon as center of outer hexFace with lines to the two corners defining the port
-                    // port.setAttribute('href', `#${portTypeToResourceName[portEdge.portType]}-port`);
-                    port.textContent = portTypeToResourceName[portEdge.portType];
-                    port.setAttribute('dominant-baseline', 'middle');
-                    port.setAttribute('text-anchor', 'middle');
-                    const coordinates = edgeMidpointPixel(hexEdgeGridToPixels(portEdge.hexEdge));
-                    port.setAttribute('x', coordinates.x);
-                    port.setAttribute('y', coordinates.y);
-                    hexTilesGroup.appendChild(port);
-                }
-            } else if (event.data.type == PLAYER_UPDATE_EVENT) {
-                const playerTable = document.getElementById('player-table');
-                for (const player of event.data.payload) {
-                    colorToUsernameMap[player.color] = player.username;
-                    const row = document.createElement('tr');
-                    const nameCell = document.createElement('td');
-                    nameCell.textContent = player.username;
-                    row.appendChild(nameCell);
-                    const pointsCell = document.createElement('td');
-                    pointsCell.textContent = player.victoryPointState._totalPublicVictoryPoints;
-                    row.appendChild(pointsCell);
-                    const resourcesCell = document.createElement('td');
-                    resourcesCell.textContent = player.resourceCards.length;
-                    row.appendChild(resourcesCell);
-                    const devCardsCell = document.createElement('td');
-                    devCardsCell.textContent = player.developmentCards.length;
-                    row.appendChild(devCardsCell);
-                    const knightsCell = document.createElement('td');
-                    knightsCell.textContent = 0;
-                    row.appendChild(knightsCell);
-                    const roadsCell = document.createElement('td');
-                    roadsCell.textContent = 0;
-                    row.appendChild(roadsCell);
-                    playerTable.appendChild(row);
-                }
-                break;
+            } else {
+                console.debug(`No event handler for event ${eventIndex} with type ${eventType}`, event);
             }
         }
         eventIndexInput.max = gameLog.length - 1;
@@ -226,81 +168,15 @@ function processEvents(startingIndex, finishingIndex) {
     const isReversed = startingIndex > finishingIndex;
     for (let eventIndex = startingIndex; eventIndex != finishingIndex; eventIndex += (isReversed ? -1 : 1)) {
         const event = gameLog[eventIndex];
-        if (event.data) {
-            let payload = null;
-            switch (event.data.type) {
-                case BUILD_CORNER_EVENT:
-                    payload = event.data.payload[0];
-                    if (isReversed) {
-                        removeCornerBuilding(payload.hexCorner, payload.owner, payload.buildingType);
-                        removeMessage(eventIndex, logContainer);
-                    } else {
-                        drawCornerBuilding(payload.hexCorner, payload.owner, payload.buildingType);
-                        addMessage(`built a ${buildingTypeIdMap[payload.buildingType]}`, colorToUsernameMap[payload.owner], eventIndex, logContainer);
-                    }
-                    break;
-                case BUILD_EDGE_EVENT:
-                    payload = event.data.payload[0];
-                    if (isReversed) {
-                        removeEdgeBuilding(payload.hexEdge);
-                        removeMessage(eventIndex, logContainer)
-                    } else {
-                        drawEdgeBuilding(payload.hexEdge, payload.owner);
-                        addMessage(`built a road`, colorToUsernameMap[payload.owner], eventIndex, logContainer);
-                    }
-                    break;
-                case MOVE_ROBBER_EVENT:
-                    if (isReversed) {
-                        moveRobber(event.data.payload[0].hexFace);
-                    } else {
-                        moveRobber(event.data.payload[1].hexFace);
-                    }
-                    break;
-                case CHAT_MESSAGE_EVENT:
-                    payload = event.data.payload;
-                    if (payload.text != null) {
-                        const message = payload.text.options.value;
-                        const username = payload.username;
-                        if (isReversed) {
-                            removeMessage(eventIndex, chatContainer);
-                        } else {
-                            addMessage(message, username, eventIndex, chatContainer);
-                        }
-                    }
-                    break;
-                case GAME_LOG_EVENT:
-                    payload = event.data.payload;
-                    if (payload.text != null) {
-                        const key = payload.text.key;
-                        if (isReversed) {
-                            removeMessage(eventIndex, logContainer);
-                        }
-                        switch (key) {
-                            case PLAYER_ROLLED_DICE:
-                                addMessage(`rolled ${payload.text.options.diceString}`, payload.username, eventIndex, logContainer);
-                                break;
-                            case PLAYER_MOVED_ROBBER:
-                                addMessage(`moved the robber to ${payload.text.options.tileChatString}`, payload.username, eventIndex, logContainer);
-                                break;
-                            default:
-                                console.debug(`Unhandled game log key ${key}`);
-                        }
-                    } else {
-                        console.debug(`Game log event ${eventIndex} with payload ${payload} has no text`);
-                    }
-                    break;
-                case TRADE_EVENT:
-                    payload = event.data.payload;
-                    const givingPlayer = colorToUsernameMap[payload.givingPlayer];
-                    const receivingPlayer = colorToUsernameMap[payload.receivingPlayer];
-                    const givingResources = payload.givingCards;
-                    break;
-                    // TODO: Finish
-                default:
-                    console.debug(`Unhandled event type ${event.data.type}`);
+        if (event.data && event.data.type) {
+            const eventHandler = eventHandlers[event.data.type];
+            if (eventHandler) {
+                eventHandler(event.data, isReversed, eventIndex);
+            } else {
+                console.debug(`No event handler for event ${eventIndex} with type ${event.data.type}`, event);
             }
         } else {
-            console.log(`Event ${eventIndex} has no data`);
+            console.debug(`Event ${eventIndex} is missing a data or data.type field`, event);
         }
     }
 }
@@ -509,6 +385,203 @@ function getDrawnElementId(type, coordinates) {
 function getMessageId(eventIndex) {
     return `message-${eventIndex}`;
 }
+
+function handleBankStateEvent(data, isReversed, eventIndex) {
+    console.debug(`Bank state event at index ${eventIndex}`, data);
+}
+
+function handleDiceRollEvent(data, isReversed, eventIndex) {
+    console.debug(`Dice roll event at index ${eventIndex}`, data);
+
+}
+
+function handlePlayerUpdateEvent(data, isReversed, eventIndex) {
+    console.debug(`Player update event at index ${eventIndex}`, data);
+    if (eventIndex == PRE_GAME_EVENT_INDEX) {
+        const playerTable = document.getElementById('player-table');
+        for (const player of data.payload) {
+            colorToUsernameMap[player.color] = player.username;
+            const row = document.createElement('tr');
+            const nameCell = document.createElement('td');
+            nameCell.textContent = player.username;
+            row.appendChild(nameCell);
+            const pointsCell = document.createElement('td');
+            pointsCell.textContent = player.victoryPointState._totalPublicVictoryPoints;
+            row.appendChild(pointsCell);
+            const resourcesCell = document.createElement('td');
+            resourcesCell.textContent = player.resourceCards.length;
+            row.appendChild(resourcesCell);
+            const devCardsCell = document.createElement('td');
+            devCardsCell.textContent = player.developmentCards.length;
+            row.appendChild(devCardsCell);
+            const knightsCell = document.createElement('td');
+            knightsCell.textContent = 0;
+            row.appendChild(knightsCell);
+            const roadsCell = document.createElement('td');
+            roadsCell.textContent = 0;
+            row.appendChild(roadsCell);
+            playerTable.appendChild(row);
+        }
+    }
+}
+
+function handleBoardDescriptionEvent(data, isReversed, eventIndex) {
+    console.debug(`Board description event at index ${eventIndex}`, data);
+    if (eventIndex == PRE_GAME_EVENT_INDEX) {
+        // Draw pointy-top hex grid
+        // See https://www.redblobgames.com/grids/hexagons/ for explanation of hex grid coordinates
+        for (const tile of data.payload.tileState.tiles) {
+            const resourceName = tileTypeToResourceName[tile.tileType];
+            const hexFace = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+            setImageSource(hexFace, 'tile', resourceName);
+            hexFace.setAttribute('width', getHexWidth(HEX_SIZE));
+            hexFace.setAttribute('height', getHexHeight(HEX_SIZE));
+            const hexFaceCenter = hexFaceGridToPixel(tile.hexFace);
+            hexFace.setAttribute('x', hexFaceCenter.x - getHexWidth() / 2);
+            hexFace.setAttribute('y', hexFaceCenter.y - getHexHeight() / 2);
+            hexTilesGroup.appendChild(hexFace);
+
+            // Draw dice number and probability dots
+            if (resourceName != 'desert') {
+                const diceNumber = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                diceNumber.setAttribute('x', hexFaceCenter.x);
+                diceNumber.setAttribute('y', hexFaceCenter.y);
+                diceNumber.textContent = tile._diceNumber
+                diceNumber.setAttribute('dominant-baseline', 'middle');
+                diceNumber.setAttribute('text-anchor', 'middle');
+                hexTilesGroup.appendChild(diceNumber);
+
+                const diceProbability = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                diceProbability.setAttribute('x', hexFaceCenter.x);
+                diceProbability.setAttribute('y', hexFaceCenter.y + HEX_SIZE / 5);
+                diceProbability.textContent = "•".repeat(tile._diceProbability);
+                diceProbability.setAttribute('dominant-baseline', 'middle');
+                diceProbability.setAttribute('text-anchor', 'middle');
+                hexTilesGroup.appendChild(diceProbability);
+            } else {
+                setImageSource(robber, 'icon', 'robber');
+                robber.setAttribute('width', ROBBER_SIZE);
+                robber.setAttribute('height', ROBBER_SIZE);
+                moveRobber(tile.hexFace);
+            }
+        }
+
+        // Draw ports
+        for (const portEdge of data.payload.portState.portEdges) {
+            const port = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            // TODO: Draw port icon as center of outer hexFace with lines to the two corners defining the port
+            // port.setAttribute('href', `#${portTypeToResourceName[portEdge.portType]}-port`);
+            port.textContent = portTypeToResourceName[portEdge.portType];
+            port.setAttribute('dominant-baseline', 'middle');
+            port.setAttribute('text-anchor', 'middle');
+            const coordinates = edgeMidpointPixel(hexEdgeGridToPixels(portEdge.hexEdge));
+            port.setAttribute('x', coordinates.x);
+            port.setAttribute('y', coordinates.y);
+            hexTilesGroup.appendChild(port);
+        }
+    }
+}
+
+function handleBuildEdgeEvent(data, isReversed, eventIndex) {
+    console.debug(`Build edge event at index ${eventIndex}`, data);
+    const payload = data.payload[0];
+    if (isReversed) {
+        removeEdgeBuilding(payload.hexEdge);
+        removeMessage(eventIndex, logContainer)
+    } else {
+        drawEdgeBuilding(payload.hexEdge, payload.owner);
+        addMessage(`built a road`, colorToUsernameMap[payload.owner], eventIndex, logContainer);
+    }
+}
+
+function handleBuildCornerEvent(data, isReversed, eventIndex) {
+    console.debug(`Build corner event at index ${eventIndex}`, data);
+    payload = data.payload[0];
+    if (isReversed) {
+        removeCornerBuilding(payload.hexCorner, payload.owner, payload.buildingType);
+        removeMessage(eventIndex, logContainer);
+    } else {
+        drawCornerBuilding(payload.hexCorner, payload.owner, payload.buildingType);
+        addMessage(`built a ${buildingTypeIdMap[payload.buildingType]}`, colorToUsernameMap[payload.owner], eventIndex, logContainer);
+    }
+}
+
+function handleMoveRobberEvent(data, isReversed, eventIndex) {
+    console.debug(`Move robber event at index ${eventIndex}`, data);
+    if (isReversed) {
+        moveRobber(data.payload[0].hexFace);
+    } else {
+        moveRobber(data.payload[1].hexFace);
+    }
+}
+
+function handleChatMessageEvent(data, isReversed, eventIndex) {
+    console.debug(`Chat message event at ${eventIndex}`, data);
+    payload = data.payload;
+    if (payload.text != null) {
+        const message = payload.text.options.value;
+        const username = payload.username;
+        if (isReversed) {
+            removeMessage(eventIndex, chatContainer);
+        } else {
+            addMessage(message, username, eventIndex, chatContainer);
+        }
+    }
+}
+
+function handleTradeEvent(data, isReversed, eventIndex) {
+    console.debug(`Trade event at ${eventIndex}`, data);
+    payload = data.payload;
+    const givingPlayer = colorToUsernameMap[payload.givingPlayer];
+    const receivingPlayer = colorToUsernameMap[payload.receivingPlayer];
+    const givingResources = payload.givingCards.map(tileType => tileTypeToResourceName[tileType]);
+    const receivingResources = payload.receivingCards.map(tileType => tileTypeToResourceName[tileType]);
+    // TODO: finish incomplete implementation
+}
+
+function handleDistributionEvent(data, isReversed, eventIndex) {
+    console.debug(`Distribution event at ${eventIndex}`, data);
+
+}
+
+function handleTradeOfferEvent(data, isReversed, eventIndex) {
+    console.debug(`Trade offer event at ${eventIndex}`, data);
+}
+
+function handleTradeResponseEvent(data, isReversed, eventIndex) {
+    console.debug(`Trade response event ${data}`);
+}
+
+function handleGameLogEvent(data, isReversed, eventIndex) {
+    console.debug(`Game log event at ${eventIndex}`, data);
+    if (isReversed) {
+        removeMessage(eventIndex, logContainer);
+    } else {
+        const payload = data.payload;
+        const key = payload.text.key;
+        switch (key) {
+            case PLAYER_ROLLED_DICE:
+                addMessage(`rolled ${payload.text.options.diceString}`, payload.username, eventIndex, logContainer);
+                break;
+            case PLAYER_MOVED_ROBBER:
+                addMessage(`moved the robber to ${payload.text.options.tileChatString}`, payload.username, eventIndex, logContainer);
+                break;
+            default:
+                console.debug(`Unhandled game log key ${key}`);
+        }
+    }
+}
+
+function handleGameRulesEvent(data, isReversed, eventIndex) {
+    console.debug(`Game rules event at ${eventIndex}`, data);
+    if (isReversed) {
+        console.error("Game rules event is not reversible");
+    }
+}
+
+
+
+
 
 prevBtn.addEventListener('click', prevEvent);
 nextBtn.addEventListener('click', nextEvent);
