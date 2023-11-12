@@ -36,6 +36,8 @@
             height: 100%;
             width: 50%;
             float: left;
+            background: rgb(221, 221, 221);
+            background: radial-gradient(circle, rgba(221, 221, 221, 1) 0%, rgba(61, 0, 255, 1) 100%);
         }
 
         #right-container {
@@ -51,39 +53,43 @@
         }
 
         #log-container {
-            height: 15vh;
+            height: 20vh;
             width: 100%;
             overflow-y: scroll;
             flex: 1 auto;
             border: solid 1px black;
-            margin: 0;
             padding: auto;
             background: linear-gradient(11deg, rgba(221, 221, 221, 1) 0%, rgba(243, 243, 245, 1) 100%);
         }
 
         #chat-container {
-            height: 15vh;
+            height: 20vh;
             width: 100%;
             overflow-y: scroll;
             flex: 1 auto;
             border: solid 1px black;
-            margin: 0;
             padding: auto;
             background: linear-gradient(11deg, rgba(221, 221, 221, 1) 0%, rgba(243, 243, 245, 1) 100%);
         }
 
         #controls-container {
-            height: 5vh;
+            height: 7vh;
+            flex: 1 auto;
+            border: solid 1px black;
             background: linear-gradient(11deg, rgba(221, 221, 221, 1) 0%, rgba(243, 243, 245, 1) 100%);
         }
 
         #player-container {
             height: 50vh;
+            flex: 1 auto;
+            border: solid 1px black;
             background: linear-gradient(11deg, rgba(221, 221, 221, 1) 0%, rgba(243, 243, 245, 1) 100%);
         }
 
-        #resource-container {
+        #bank-container {
             height: 10vh;
+            flex: 1 auto;
+            border: solid 1px black;
             background: linear-gradient(11deg, rgba(221, 221, 221, 1) 0%, rgba(243, 243, 245, 1) 100%);
         }
     </style>
@@ -108,7 +114,9 @@
             </div>
             <div id="log-container"></div>
             <div id="chat-container"></div>
-            <div id="resource-container"></div>
+            <div id="bank-container">
+                <svg id="bank-counts" style="width:100%;height:100%;"></svg>
+            </div>
             <div id="player-container">
                 <table>
                     <thead>

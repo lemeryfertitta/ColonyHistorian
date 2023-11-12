@@ -1,3 +1,5 @@
+const cards = ['lumber', 'brick', 'wool', 'grain', 'ore', 'devcardback'];
+
 // Tile IDs in WebSocket messages
 const tileTypeToResourceName = {
     0: 'desert',
@@ -54,6 +56,7 @@ const eventHandlers = {
     73: handleChatMessageEvent,
 };
 
+const KNIGHT_ID = 7;
 const GAME_RULES_EVENT = 44;
 const PRE_GAME_EVENT_INDEX = -1;
 
@@ -66,6 +69,8 @@ const PLAYER_MOVED_ROBBER = "strings:socket.playerMovedRobber";
 const HEX_SIZE = 50;
 const BUILDING_SIZE = 40;
 const ROBBER_SIZE = 35;
+const CARD_SIZE = 50;
+const PROB_SIZE = 35;
 
 let gameLog = [];
 let currentEventIndex = 0;
@@ -83,7 +88,8 @@ const hexCornersGroup = document.getElementById('hex-corners');
 const viewBox = document.getElementById('view-box');
 viewBox.setAttributeNS(null, "viewBox", `${getHexWidth() * -3} ${getHexHeight() * -3} ${getHexWidth() * 6} ${getHexHeight() * 6}`)
 const robber = document.getElementById('robber');
-
+setRobberAttributes();
+drawCards();
 
 eventIndexInput.addEventListener('input', (event) => {
     const newEventIndex = Math.min(gameLog.length - 1, Math.max(parseInt(event.target.value), 0));
@@ -99,7 +105,7 @@ gameLogInput.addEventListener('change', (event) => {
         const fullGameLog = JSON.parse(reader.result);
         let reachedGameRulesEvent = false;
 
-        // Pprocess all events up to the game rules event and store the remainder in the gameLog
+        // Process all events up to the game rules event and store the remainder in the gameLog
         for (let eventIndex = 0; eventIndex < fullGameLog.length; eventIndex++) {
             const event = fullGameLog[eventIndex];
             const data = event.data;
@@ -271,12 +277,88 @@ function setImageSource(element, image_type, image_subtype,) {
     element.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `https://colonist.io/dist/images/${image_type}${suffix}.svg`);
 }
 
+function setImgSource(element, image_type, image_subtype) {
+    const suffix = image_subtype ? `_${image_subtype}` : '';
+    element.setAttribute('src', `https://colonist.io/dist/images/${image_type}${suffix}.svg`);
+}
+
+function drawCards() {
+    const cardCounts = document.getElementById('bank-counts');
+    const bankImage = document.createElementNS("http://www.w3.org/2000/svg", "image");
+    setImageSource(bankImage, 'bank');
+    bankImage.setAttribute('width', CARD_SIZE);
+    bankImage.setAttribute('height', CARD_SIZE);
+    bankImage.setAttribute('x', CARD_SIZE / 2);
+    bankImage.setAttribute('y', CARD_SIZE / 4);
+    cardCounts.appendChild(bankImage);
+    const xOffset = 2 * CARD_SIZE;
+    for (let cardIndex = 0; cardIndex < cards.length; cardIndex++) {
+        const card = cards[cardIndex];
+        const cardCountGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        const cardImage = document.createElementNS("http://www.w3.org/2000/svg", "image");
+        setImageSource(cardImage, 'card', card);
+        cardImage.setAttribute('width', CARD_SIZE);
+        cardImage.setAttribute('height', CARD_SIZE * 1.5);
+        cardImage.setAttribute('x', cardIndex * CARD_SIZE + xOffset);
+        cardImage.setAttribute('y', 0);
+        cardCountGroup.appendChild(cardImage);
+        const cardCountText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        cardCountText.id = `${card}-count`;
+        cardCountText.textContent = 0;
+        cardCountText.setAttribute('x', cardIndex * CARD_SIZE + CARD_SIZE / 2 + xOffset);
+        cardCountText.setAttribute('y', CARD_SIZE * (1 / 4));
+        cardCountText.setAttribute('dominant-baseline', 'middle');
+        cardCountText.setAttribute('text-anchor', 'middle');
+        cardCountGroup.appendChild(cardCountText);
+        cardCounts.appendChild(cardCountGroup);
+    }
+}
+
+function drawHexFace(hexFaceCenter, resourceName) {
+    const hexFace = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+    setImageSource(hexFace, 'tile', resourceName);
+    hexFace.setAttribute('width', getHexWidth(HEX_SIZE));
+    hexFace.setAttribute('height', getHexHeight(HEX_SIZE));
+    hexFace.setAttribute('x', hexFaceCenter.x - getHexWidth() / 2);
+    hexFace.setAttribute('y', hexFaceCenter.y - getHexHeight() / 2);
+    hexTilesGroup.appendChild(hexFace);
+}
+
+function drawProbability(hexFaceCenter, number) {
+    const diceProbability = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+    setImageSource(diceProbability, 'prob', number);
+    diceProbability.setAttribute('width', PROB_SIZE);
+    diceProbability.setAttribute('height', PROB_SIZE);
+    diceProbability.setAttribute('x', hexFaceCenter.x - PROB_SIZE / 2);
+    diceProbability.setAttribute('y', hexFaceCenter.y - PROB_SIZE / 10);
+    hexTilesGroup.appendChild(diceProbability);
+}
+
+function drawPort(portEdge) {
+    const port = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    // TODO: Draw port icon as center of outer hexFace with lines to the two corners defining the port
+    port.textContent = portTypeToResourceName[portEdge.portType];
+    port.setAttribute('dominant-baseline', 'middle');
+    port.setAttribute('text-anchor', 'middle');
+    const coordinates = edgeMidpointPixel(hexEdgeGridToPixels(portEdge.hexEdge));
+    port.setAttribute('x', coordinates.x);
+    port.setAttribute('y', coordinates.y);
+    hexTilesGroup.appendChild(port);
+}
+
+function setRobberAttributes() {
+    setImageSource(robber, 'icon', 'robber');
+    robber.setAttribute('width', ROBBER_SIZE);
+    robber.setAttribute('height', ROBBER_SIZE);
+    robber.setAttribute('visibility', 'hidden');
+}
+
 /**
  * 
  * @param {*} hexCorner the grid coordinates for the corner of the settlement
  * @param {*} color the id of the player who owns the settlement
  */
-function drawCornerBuilding(hexCorner, color, buildingTypeId) {
+function drawCorner(hexCorner, color, buildingTypeId) {
     const buildingType = buildingTypeIdMap[buildingTypeId];
     const buildingId = getDrawnElementId('corner', hexCorner);
     const existingBuilding = document.getElementById(buildingId);
@@ -300,7 +382,7 @@ function drawCornerBuilding(hexCorner, color, buildingTypeId) {
  * @param {*} color the id of the player who owns the building
  * @param {*} buildingTypeId the id of the building type to draw
  */
-function removeCornerBuilding(hexCorner, color, buildingTypeId) {
+function eraseCorner(hexCorner, color, buildingTypeId) {
     const buildingType = buildingTypeIdMap[buildingTypeId];
     const buildingId = getDrawnElementId('corner', hexCorner);
     const building = document.getElementById(buildingId);
@@ -308,7 +390,7 @@ function removeCornerBuilding(hexCorner, color, buildingTypeId) {
         hexCornersGroup.removeChild(building);
         if (buildingType == 'city') {
             // When a city is removed, it needs to be replaced with its corresponding settlement
-            drawCornerBuilding(hexCorner, color, 1);
+            drawCorner(hexCorner, color, 1);
         }
     } else {
         console.log(`Could not find building with id ${buildingId}`);
@@ -316,7 +398,7 @@ function removeCornerBuilding(hexCorner, color, buildingTypeId) {
 
 }
 
-function drawEdgeBuilding(hexEdge, color) {
+function drawEdge(hexEdge, color) {
     const buildingId = getDrawnElementId('edge', hexEdge);
     const existingBuilding = document.getElementById(buildingId);
     if (existingBuilding != null) {
@@ -334,7 +416,7 @@ function drawEdgeBuilding(hexEdge, color) {
     hexEdgesGroup.appendChild(line);
 }
 
-function removeEdgeBuilding(hexEdge) {
+function eraseEdge(hexEdge) {
     const buildingId = getDrawnElementId('edge', hexEdge);
     const building = document.getElementById(buildingId);
     if (building) {
@@ -345,13 +427,13 @@ function removeEdgeBuilding(hexEdge) {
 }
 
 function moveRobber(targetHexFace) {
-    const robber = document.getElementById('robber');
     const coordinates = hexFaceGridToPixel(targetHexFace);
     robber.setAttribute('x', coordinates.x - getHexWidth() / 2);
     robber.setAttribute('y', coordinates.y - ROBBER_SIZE / 2);
+    robber.setAttribute('visibility', 'visibile');
 }
 
-function addMessage(message, username, eventIndex, container) {
+function drawMessage(message, username, eventIndex, container) {
     const messageId = getMessageId(eventIndex);
     const existingMessage = document.getElementById(messageId);
     if (existingMessage != null) {
@@ -367,7 +449,7 @@ function addMessage(message, username, eventIndex, container) {
     container.scrollTop = container.scrollHeight;
 }
 
-function removeMessage(eventIndex, container) {
+function eraseMessage(eventIndex, container) {
     const messageId = getMessageId(eventIndex);
     const messageElement = document.getElementById(messageId);
     if (messageElement) {
@@ -388,6 +470,24 @@ function getMessageId(eventIndex) {
 
 function handleBankStateEvent(data, isReversed, eventIndex) {
     console.debug(`Bank state event at index ${eventIndex}`, data);
+    let cardCounts = {
+        "lumber": 0,
+        "brick": 0,
+        "wool": 0,
+        "grain": 0,
+        "ore": 0,
+        "devcardback": data.payload.hiddenDevelopmentCards.length,
+    }
+    for (const resource of data.payload.resourceCards) {
+        const resourceName = tileTypeToResourceName[resource];
+        if (resourceName) {
+            cardCounts[resourceName]++;
+        }
+    }
+    for (const [card, count] of Object.entries(cardCounts)) {
+        const cardCount = document.getElementById(`${card}-count`);
+        cardCount.textContent = count;
+    }
 }
 
 function handleDiceRollEvent(data, isReversed, eventIndex) {
@@ -395,34 +495,63 @@ function handleDiceRollEvent(data, isReversed, eventIndex) {
 
 }
 
+function getPlayerRow(username) {
+    const rowId = `player-${username}`;
+    const row = document.getElementById(rowId);
+    if (row) {
+        return row;
+    } else {
+        const newRow = document.createElement('tr');
+        newRow.id = `player-${username}`;
+        const playerTable = document.getElementById('player-table');
+        playerTable.appendChild(newRow);
+        return newRow;
+    }
+}
+
+function getPlayerCell(username, cellType) {
+    const cellId = `player-${username}-${cellType}`;
+    const cell = document.getElementById(cellId);
+    if (cell) {
+        return cell;
+    } else {
+        const newCell = document.createElement('td');
+        newCell.id = cellId;
+        const row = getPlayerRow(username);
+        row.appendChild(newCell);
+        return newCell;
+    }
+}
+
 function handlePlayerUpdateEvent(data, isReversed, eventIndex) {
     console.debug(`Player update event at index ${eventIndex}`, data);
-    if (eventIndex == PRE_GAME_EVENT_INDEX) {
-        const playerTable = document.getElementById('player-table');
-        for (const player of data.payload) {
-            colorToUsernameMap[player.color] = player.username;
-            const row = document.createElement('tr');
-            const nameCell = document.createElement('td');
-            nameCell.textContent = player.username;
-            row.appendChild(nameCell);
-            const pointsCell = document.createElement('td');
-            pointsCell.textContent = player.victoryPointState._totalPublicVictoryPoints;
-            row.appendChild(pointsCell);
-            const resourcesCell = document.createElement('td');
-            resourcesCell.textContent = player.resourceCards.length;
-            row.appendChild(resourcesCell);
-            const devCardsCell = document.createElement('td');
-            devCardsCell.textContent = player.developmentCards.length;
-            row.appendChild(devCardsCell);
-            const knightsCell = document.createElement('td');
-            knightsCell.textContent = 0;
-            row.appendChild(knightsCell);
-            const roadsCell = document.createElement('td');
-            roadsCell.textContent = 0;
-            row.appendChild(roadsCell);
-            playerTable.appendChild(row);
+    for (const player of data.payload) {
+        const username = player.username;
+        colorToUsernameMap[player.color] = username;
+
+        const nameCell = getPlayerCell(username, 'name');
+        nameCell.textContent = username;
+
+        const pointsCell = getPlayerCell(username, 'points');
+        pointsCell.textContent = player.victoryPointState._totalPublicVictoryPoints;
+
+        const resourcesCell = getPlayerCell(username, 'resources');
+        resourcesCell.textContent = player.resourceCards.length;
+
+        const devCardsCell = getPlayerCell(username, 'dev-cards');
+        devCardsCell.textContent = player.developmentCards.length;
+
+        const armyCell = getPlayerCell(username, 'largest-army');
+        let armyCount = 0;
+        for (const devCard of player.developmentCardsUsed) {
+            armyCount += devCard == KNIGHT_ID ? 1 : 0;
         }
+        armyCell.innerHTML = player.hasLargestArmy ? `<b>${armyCount}</b>` : armyCount;
+
+        const roadCell = getPlayerCell(username, 'longest-road');
+        roadCell.innerHTML = player.hasLongestRoad ? `<b>${player.longestRoad}</b>` : player.longestRoad;
     }
+
 }
 
 function handleBoardDescriptionEvent(data, isReversed, eventIndex) {
@@ -431,53 +560,18 @@ function handleBoardDescriptionEvent(data, isReversed, eventIndex) {
         // Draw pointy-top hex grid
         // See https://www.redblobgames.com/grids/hexagons/ for explanation of hex grid coordinates
         for (const tile of data.payload.tileState.tiles) {
-            const resourceName = tileTypeToResourceName[tile.tileType];
-            const hexFace = document.createElementNS('http://www.w3.org/2000/svg', 'image');
-            setImageSource(hexFace, 'tile', resourceName);
-            hexFace.setAttribute('width', getHexWidth(HEX_SIZE));
-            hexFace.setAttribute('height', getHexHeight(HEX_SIZE));
             const hexFaceCenter = hexFaceGridToPixel(tile.hexFace);
-            hexFace.setAttribute('x', hexFaceCenter.x - getHexWidth() / 2);
-            hexFace.setAttribute('y', hexFaceCenter.y - getHexHeight() / 2);
-            hexTilesGroup.appendChild(hexFace);
-
-            // Draw dice number and probability dots
+            const resourceName = tileTypeToResourceName[tile.tileType];
+            drawHexFace(hexFaceCenter, resourceName);
             if (resourceName != 'desert') {
-                const diceNumber = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                diceNumber.setAttribute('x', hexFaceCenter.x);
-                diceNumber.setAttribute('y', hexFaceCenter.y);
-                diceNumber.textContent = tile._diceNumber
-                diceNumber.setAttribute('dominant-baseline', 'middle');
-                diceNumber.setAttribute('text-anchor', 'middle');
-                hexTilesGroup.appendChild(diceNumber);
-
-                const diceProbability = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                diceProbability.setAttribute('x', hexFaceCenter.x);
-                diceProbability.setAttribute('y', hexFaceCenter.y + HEX_SIZE / 5);
-                diceProbability.textContent = "•".repeat(tile._diceProbability);
-                diceProbability.setAttribute('dominant-baseline', 'middle');
-                diceProbability.setAttribute('text-anchor', 'middle');
-                hexTilesGroup.appendChild(diceProbability);
+                drawProbability(hexFaceCenter, tile._diceNumber);
             } else {
-                setImageSource(robber, 'icon', 'robber');
-                robber.setAttribute('width', ROBBER_SIZE);
-                robber.setAttribute('height', ROBBER_SIZE);
                 moveRobber(tile.hexFace);
             }
         }
 
-        // Draw ports
         for (const portEdge of data.payload.portState.portEdges) {
-            const port = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-            // TODO: Draw port icon as center of outer hexFace with lines to the two corners defining the port
-            // port.setAttribute('href', `#${portTypeToResourceName[portEdge.portType]}-port`);
-            port.textContent = portTypeToResourceName[portEdge.portType];
-            port.setAttribute('dominant-baseline', 'middle');
-            port.setAttribute('text-anchor', 'middle');
-            const coordinates = edgeMidpointPixel(hexEdgeGridToPixels(portEdge.hexEdge));
-            port.setAttribute('x', coordinates.x);
-            port.setAttribute('y', coordinates.y);
-            hexTilesGroup.appendChild(port);
+            drawPort(portEdge);
         }
     }
 }
@@ -486,11 +580,11 @@ function handleBuildEdgeEvent(data, isReversed, eventIndex) {
     console.debug(`Build edge event at index ${eventIndex}`, data);
     const payload = data.payload[0];
     if (isReversed) {
-        removeEdgeBuilding(payload.hexEdge);
-        removeMessage(eventIndex, logContainer)
+        eraseEdge(payload.hexEdge);
+        eraseMessage(eventIndex, logContainer)
     } else {
-        drawEdgeBuilding(payload.hexEdge, payload.owner);
-        addMessage(`built a road`, colorToUsernameMap[payload.owner], eventIndex, logContainer);
+        drawEdge(payload.hexEdge, payload.owner);
+        drawMessage(`built a road`, colorToUsernameMap[payload.owner], eventIndex, logContainer);
     }
 }
 
@@ -498,11 +592,11 @@ function handleBuildCornerEvent(data, isReversed, eventIndex) {
     console.debug(`Build corner event at index ${eventIndex}`, data);
     payload = data.payload[0];
     if (isReversed) {
-        removeCornerBuilding(payload.hexCorner, payload.owner, payload.buildingType);
-        removeMessage(eventIndex, logContainer);
+        eraseCorner(payload.hexCorner, payload.owner, payload.buildingType);
+        eraseMessage(eventIndex, logContainer);
     } else {
-        drawCornerBuilding(payload.hexCorner, payload.owner, payload.buildingType);
-        addMessage(`built a ${buildingTypeIdMap[payload.buildingType]}`, colorToUsernameMap[payload.owner], eventIndex, logContainer);
+        drawCorner(payload.hexCorner, payload.owner, payload.buildingType);
+        drawMessage(`built a ${buildingTypeIdMap[payload.buildingType]}`, colorToUsernameMap[payload.owner], eventIndex, logContainer);
     }
 }
 
@@ -522,9 +616,9 @@ function handleChatMessageEvent(data, isReversed, eventIndex) {
         const message = payload.text.options.value;
         const username = payload.username;
         if (isReversed) {
-            removeMessage(eventIndex, chatContainer);
+            eraseMessage(eventIndex, chatContainer);
         } else {
-            addMessage(message, username, eventIndex, chatContainer);
+            drawMessage(message, username, eventIndex, chatContainer);
         }
     }
 }
@@ -555,16 +649,16 @@ function handleTradeResponseEvent(data, isReversed, eventIndex) {
 function handleGameLogEvent(data, isReversed, eventIndex) {
     console.debug(`Game log event at ${eventIndex}`, data);
     if (isReversed) {
-        removeMessage(eventIndex, logContainer);
+        eraseMessage(eventIndex, logContainer);
     } else {
         const payload = data.payload;
         const key = payload.text.key;
         switch (key) {
             case PLAYER_ROLLED_DICE:
-                addMessage(`rolled ${payload.text.options.diceString}`, payload.username, eventIndex, logContainer);
+                drawMessage(`rolled ${payload.text.options.diceString}`, payload.username, eventIndex, logContainer);
                 break;
             case PLAYER_MOVED_ROBBER:
-                addMessage(`moved the robber to ${payload.text.options.tileChatString}`, payload.username, eventIndex, logContainer);
+                drawMessage(`moved the robber to ${payload.text.options.tileChatString}`, payload.username, eventIndex, logContainer);
                 break;
             default:
                 console.debug(`Unhandled game log key ${key}`);
