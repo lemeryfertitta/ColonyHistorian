@@ -43,6 +43,7 @@ const usernameToColorMap = {};
 
 const eventHandlers = {
     7: handleGameLogEvent,
+    9: handleTurnStateEvent,
     10: handleBankStateEvent,
     11: handleDiceRollEvent,
     12: handlePlayerUpdateEvent,
@@ -50,7 +51,6 @@ const eventHandlers = {
     15: handleBuildEdgeEvent,
     16: handleBuildCornerEvent,
     17: handleMoveRobberEvent,
-    28: handleDistributionEvent,
     36: handleTradeOfferEvent,
     37: handleTradeResponseEvent,
     43: handleTradeEvent,
@@ -574,7 +574,7 @@ function handlePlayerUpdateEvent(data, isReversed, eventIndex) {
         usernameToColorMap[username] = colorIdMap[player.color];
 
         const nameCell = getPlayerCell(username, 'name');
-        nameCell.textContent = username;
+        nameCell.innerHTML = getPlayerNameString(username);
 
         const pointsCell = getPlayerCell(username, 'points');
         pointsCell.textContent = player.victoryPointState._totalPublicVictoryPoints;
@@ -616,6 +616,19 @@ function handleBoardDescriptionEvent(data, isReversed, eventIndex) {
 
         for (const portEdge of data.payload.portState.portEdges) {
             drawPort(portEdge);
+        }
+    }
+}
+
+function handleTurnStateEvent(data, isReversed, eventIndex) {
+    console.debug(`Turn state event at index ${eventIndex}`, data);
+    const currentTurnPlayer = colorIdToUsernameMap[data.payload.currentTurnPlayerColor];
+    for (const username of Object.keys(usernameToColorMap)) {
+        const playerRow = getPlayerRow(username);
+        if (username == currentTurnPlayer) {
+            playerRow.style.backgroundColor = 'lightgray';
+        } else {
+            playerRow.style.backgroundColor = 'darkgray';
         }
     }
 }
@@ -671,11 +684,6 @@ function handleTradeEvent(data, isReversed, eventIndex) {
     const givingResources = payload.givingCards.map(tileType => tileTypeToResourceName[tileType]);
     const receivingResources = payload.receivingCards.map(tileType => tileTypeToResourceName[tileType]);
     // TODO: finish incomplete implementation
-}
-
-function handleDistributionEvent(data, isReversed, eventIndex) {
-    console.debug(`Distribution event at ${eventIndex}`, data);
-
 }
 
 function handleTradeOfferEvent(data, isReversed, eventIndex) {
