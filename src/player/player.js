@@ -35,9 +35,11 @@ const buildingTypeIdMap = {
     2: 'city'
 }
 
-const colorToUsernameMap = {
+const colorIdToUsernameMap = {
     0: 'bank'
 };
+
+const usernameToColorMap = {};
 
 const eventHandlers = {
     7: handleGameLogEvent,
@@ -62,8 +64,30 @@ const PRE_GAME_EVENT_INDEX = -1;
 
 
 // Strings in game log messages
-const PLAYER_ROLLED_DICE = "strings:socket.playerRolledDice";
-const PLAYER_MOVED_ROBBER = "strings:socket.playerMovedRobber";
+const messageMappers = {
+    "strings:socket.playerRolledDice": (options) => `${getPlayerNameString(options.playerName)} rolled ${options.diceString}`,
+    "strings:socket.playerMovedRobber": (options) => `${getPlayerNameString(options.playerName)} moved the robber to ${options.tileChatString}`,
+    "strings:socket.playerPlacedPiece": (options) => `${getPlayerNameString(options.playerName)} built a ${options.pieceString}`,
+    "strings:socket.playerReceivedStartingResources": (options) => `${getPlayerNameString(options.playerName)} received starting resources ${options.cardsString}`,
+    "strings:socket.playerGotCards": (options) => `${getPlayerNameString(options.playerName)} received ${options.cardsString}`,
+    "strings:socket.playerBuiltPiece": (options) => `${getPlayerNameString(options.playerName)} built a ${options.pieceString}`,
+    "strings:socket.playerWantsToTradeWith": (options) => `${getPlayerNameString(options.playerName)} wants to trade ${options.wantedCardString} for ${options.offeredCardString}`,
+    "strings:socket.tileBlockedByRobber": (options) => `${options.tileString} is blocked by the robber`,
+    "strings:socket.stolenResourceCards.thief": (options) => `You stole ${options.cardString} from ${getPlayerNameString(options.playerName)}`,
+    "strings:socket.stolenResourceCards.victim": (options) => `${getPlayerNameString(options.playerName)} stole ${options.cardString} from you`,
+    "strings:socket.stolenResourceCards.closed": (options) => `${getPlayerNameString(options.thiefName)} stole from ${getPlayerNameString(options.victimName)}`,
+    "strings:socket.playerBoughtCard": (options) => `${getPlayerNameString(options.playerName)} bought a development card`,
+    "strings:socket.playerTradedWithBank": (options) => `${getPlayerNameString(options.playerName)} traded ${options.givenCardString} for ${options.receivedCardString} with the bank`,
+    "strings:socket.playerWantsToCounterOfferWith": (options) => `${getPlayerNameString(options.counterOfferCreator)} wants to counter offer with ${options.offeredCardString} for ${options.wantedCardString}`,
+    "strings:socket.playerTradedWithPlayer": (options) => `${getPlayerNameString(options.playerName)} traded ${options.givenCardString} for ${options.receivedCardString} with ${getPlayerNameString(options.acceptingPlayerName)}`,
+    "strings:socket.playerPlayedDevelopmentCard": (options) => `${getPlayerNameString(options.playerName)} played a ${options.cardImage}`,
+    "strings:socket.playerTookFromBank": (options) => `${getPlayerNameString(options.playerName)} took ${options.cardString} from the bank`,
+    "strings:socket.playerReceivedAchievement": (options) => `${getPlayerNameString(options.playerName)} took ${options.achievementString}`,
+    "strings:socket.playerStoleUsingMonopoly": (options) => `${getPlayerNameString(options.playerName)} stole ${options.amountStolen} ${options.cardString} using a monopoly`,
+    "strings:socket.playerPassedAchievementTo": (options) => `${getPlayerNameString(options.newPlayerName)} took ${options.achievementString} from ${getPlayerNameString(options.oldPlayerName)}`,
+    "strings:socket.playerDiscarded": (options) => `${getPlayerNameString(options.playerName)} discarded ${options.cardString}`,
+    "strings:socket.playerWonTheGame": (options) => `${getPlayerNameString(options.playerName)} won the game!`,
+}
 
 // Scaling factors for images
 const HEX_SIZE = 50;
@@ -89,7 +113,7 @@ const viewBox = document.getElementById('view-box');
 viewBox.setAttributeNS(null, "viewBox", `${getHexWidth() * -3} ${getHexHeight() * -3} ${getHexWidth() * 6} ${getHexHeight() * 6}`)
 const robber = document.getElementById('robber');
 setRobberAttributes();
-drawCards();
+drawBankCards();
 
 eventIndexInput.addEventListener('input', (event) => {
     const newEventIndex = Math.min(gameLog.length - 1, Math.max(parseInt(event.target.value), 0));
@@ -277,12 +301,10 @@ function setImageSource(element, image_type, image_subtype,) {
     element.setAttributeNS('http://www.w3.org/1999/xlink', 'href', `https://colonist.io/dist/images/${image_type}${suffix}.svg`);
 }
 
-function setImgSource(element, image_type, image_subtype) {
-    const suffix = image_subtype ? `_${image_subtype}` : '';
-    element.setAttribute('src', `https://colonist.io/dist/images/${image_type}${suffix}.svg`);
-}
-
-function drawCards() {
+/**
+ * Fill in the bank container with cards and counts, initially all set to 0
+ */
+function drawBankCards() {
     const cardCounts = document.getElementById('bank-counts');
     const bankImage = document.createElementNS("http://www.w3.org/2000/svg", "image");
     setImageSource(bankImage, 'bank');
@@ -314,6 +336,11 @@ function drawCards() {
     }
 }
 
+/**
+ * 
+ * @param {*} hexFaceCenter the coordinates of the center of the hexagon face to draw
+ * @param {*} resourceName the name of the resource to draw
+ */
 function drawHexFace(hexFaceCenter, resourceName) {
     const hexFace = document.createElementNS('http://www.w3.org/2000/svg', 'image');
     setImageSource(hexFace, 'tile', resourceName);
@@ -324,6 +351,11 @@ function drawHexFace(hexFaceCenter, resourceName) {
     hexTilesGroup.appendChild(hexFace);
 }
 
+/**
+ * 
+ * @param {*} hexFaceCenter the coordinates of the center of the hexagon face to draw on
+ * @param {*} number the dice roll to draw
+ */
 function drawProbability(hexFaceCenter, number) {
     const diceProbability = document.createElementNS('http://www.w3.org/2000/svg', 'image');
     setImageSource(diceProbability, 'prob', number);
@@ -334,6 +366,9 @@ function drawProbability(hexFaceCenter, number) {
     hexTilesGroup.appendChild(diceProbability);
 }
 
+/**
+ * @param {*} portEdge the grid coordinates of the port edge to draw
+ */
 function drawPort(portEdge) {
     const port = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     // TODO: Draw port icon as center of outer hexFace with lines to the two corners defining the port
@@ -433,7 +468,7 @@ function moveRobber(targetHexFace) {
     robber.setAttribute('visibility', 'visibile');
 }
 
-function drawMessage(message, username, eventIndex, container) {
+function drawMessage(message, eventIndex, container) {
     const messageId = getMessageId(eventIndex);
     const existingMessage = document.getElementById(messageId);
     if (existingMessage != null) {
@@ -443,7 +478,7 @@ function drawMessage(message, username, eventIndex, container) {
     messageDiv.id = messageId;
     messageDiv.class = 'chat-message';
     const messageSpan = document.createElement('span');
-    messageSpan.textContent = `${username}: ${message}`;
+    messageSpan.innerHTML = message;
     messageDiv.appendChild(messageSpan);
     container.appendChild(messageDiv);
     container.scrollTop = container.scrollHeight;
@@ -466,6 +501,14 @@ function getDrawnElementId(type, coordinates) {
 
 function getMessageId(eventIndex) {
     return `message-${eventIndex}`;
+}
+
+function getPlayerNameString(username) {
+    const span = document.createElement('span');
+    span.style.color = usernameToColorMap[username];
+    span.style.fontWeight = 'bold';
+    span.textContent = username;
+    return span.outerHTML
 }
 
 function handleBankStateEvent(data, isReversed, eventIndex) {
@@ -527,7 +570,8 @@ function handlePlayerUpdateEvent(data, isReversed, eventIndex) {
     console.debug(`Player update event at index ${eventIndex}`, data);
     for (const player of data.payload) {
         const username = player.username;
-        colorToUsernameMap[player.color] = username;
+        colorIdToUsernameMap[player.color] = username;
+        usernameToColorMap[username] = colorIdMap[player.color];
 
         const nameCell = getPlayerCell(username, 'name');
         nameCell.textContent = username;
@@ -581,10 +625,8 @@ function handleBuildEdgeEvent(data, isReversed, eventIndex) {
     const payload = data.payload[0];
     if (isReversed) {
         eraseEdge(payload.hexEdge);
-        eraseMessage(eventIndex, logContainer)
     } else {
         drawEdge(payload.hexEdge, payload.owner);
-        drawMessage(`built a road`, colorToUsernameMap[payload.owner], eventIndex, logContainer);
     }
 }
 
@@ -593,10 +635,8 @@ function handleBuildCornerEvent(data, isReversed, eventIndex) {
     payload = data.payload[0];
     if (isReversed) {
         eraseCorner(payload.hexCorner, payload.owner, payload.buildingType);
-        eraseMessage(eventIndex, logContainer);
     } else {
         drawCorner(payload.hexCorner, payload.owner, payload.buildingType);
-        drawMessage(`built a ${buildingTypeIdMap[payload.buildingType]}`, colorToUsernameMap[payload.owner], eventIndex, logContainer);
     }
 }
 
@@ -618,7 +658,7 @@ function handleChatMessageEvent(data, isReversed, eventIndex) {
         if (isReversed) {
             eraseMessage(eventIndex, chatContainer);
         } else {
-            drawMessage(message, username, eventIndex, chatContainer);
+            drawMessage(`${getPlayerNameString(username)}: ${message}`, eventIndex, chatContainer);
         }
     }
 }
@@ -626,8 +666,8 @@ function handleChatMessageEvent(data, isReversed, eventIndex) {
 function handleTradeEvent(data, isReversed, eventIndex) {
     console.debug(`Trade event at ${eventIndex}`, data);
     payload = data.payload;
-    const givingPlayer = colorToUsernameMap[payload.givingPlayer];
-    const receivingPlayer = colorToUsernameMap[payload.receivingPlayer];
+    const givingPlayer = colorIdToUsernameMap[payload.givingPlayer];
+    const receivingPlayer = colorIdToUsernameMap[payload.receivingPlayer];
     const givingResources = payload.givingCards.map(tileType => tileTypeToResourceName[tileType]);
     const receivingResources = payload.receivingCards.map(tileType => tileTypeToResourceName[tileType]);
     // TODO: finish incomplete implementation
@@ -653,15 +693,11 @@ function handleGameLogEvent(data, isReversed, eventIndex) {
     } else {
         const payload = data.payload;
         const key = payload.text.key;
-        switch (key) {
-            case PLAYER_ROLLED_DICE:
-                drawMessage(`rolled ${payload.text.options.diceString}`, payload.username, eventIndex, logContainer);
-                break;
-            case PLAYER_MOVED_ROBBER:
-                drawMessage(`moved the robber to ${payload.text.options.tileChatString}`, payload.username, eventIndex, logContainer);
-                break;
-            default:
-                console.debug(`Unhandled game log key ${key}`);
+        const messageMapper = messageMappers[key];
+        if (messageMapper) {
+            drawMessage(messageMapper(payload.text.options), eventIndex, logContainer)
+        } else {
+            console.debug(`No message mapper`, payload);
         }
     }
 }
