@@ -58,6 +58,10 @@ const eventHandlers = {
     73: handleChatMessageEvent,
 };
 
+const devCardIdMap = {
+
+}
+
 const KNIGHT_ID = 7;
 const TURN_STATE_EVENT = 9;
 const GAME_RULES_EVENT = 44;
@@ -88,6 +92,8 @@ const messageMappers = {
     "strings:socket.playerPassedAchievementTo": (options) => `${getPlayerNameString(options.newPlayerName)} took ${options.achievementString} from ${getPlayerNameString(options.oldPlayerName)}`,
     "strings:socket.playerDiscarded": (options) => `${getPlayerNameString(options.playerName)} discarded ${options.cardString}`,
     "strings:socket.playerWonTheGame": (options) => `${getPlayerNameString(options.playerName)} won the game!`,
+    "strings:socket.playerDisconnected": (options) => `${getPlayerNameString(options.playerName)} disconnected`,
+    "strings:socket.playerReconnected": (options) => `${getPlayerNameString(options.playerName)} reconnected`,
 }
 
 // Scaling factors for images
@@ -120,7 +126,6 @@ drawBankCards();
 eventIndexInput.addEventListener('input', (event) => {
     const newEventIndex = Math.min(gameLog.length - 1, Math.max(parseInt(event.target.value), 0));
     processEvents(currentTurnNumber, newEventIndex);
-    currentTurnNumber = newEventIndex;
 });
 
 gameLogInput.addEventListener('change', (event) => {
@@ -179,7 +184,6 @@ document.addEventListener('keydown', (event) => {
 function prevEvent() {
     if (currentTurnNumber > 0) {
         processEvents(currentTurnNumber, currentTurnNumber - 1);
-        currentTurnNumber--;
     } else {
         console.log("Reached beginning of game log");
     }
@@ -188,7 +192,6 @@ function prevEvent() {
 
 function nextEvent() {
     if (currentTurnNumber < gameLog.length - 1) {
-        currentTurnNumber++;
         processEvents(currentTurnNumber, currentTurnNumber + 1);
     } else {
         console.log("Reached end of game log");
@@ -205,7 +208,6 @@ function processEvents(startingTurnNumber, endingTurnNumber) {
     const turnNumberLabel = document.getElementById('turn-number-label');
     for (let turnNumber = startingTurnNumber; turnNumber != endingTurnNumber; turnNumber += (isReversed ? -1 : 1)) {
         const turnLogs = gameLog[turnNumber];
-        turnNumberLabel.textContent = `Turn ${turnNumber}`;
         for (let turnLogIndex = 0; turnLogIndex < turnLogs.length; turnLogIndex++) {
             const log = turnLogs[turnLogIndex];
             const eventHandler = eventHandlers[log.type];
@@ -217,6 +219,8 @@ function processEvents(startingTurnNumber, endingTurnNumber) {
             }
         }
     }
+    currentTurnNumber = endingTurnNumber;
+    turnNumberLabel.textContent = `Turn ${currentTurnNumber}`;
 }
 
 /**
