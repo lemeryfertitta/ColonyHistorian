@@ -10,3 +10,5 @@
 - [] Extension in other browsers
 - [] Fix player state update between turns when reversing by pre-populating player states for whole game
 - [] Fix behavior around first and last turns when toggling and on initial load
+- [] Fix behavior when loading a new file after one has already been loaded
+- [] Update README with usage instructions
