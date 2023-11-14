@@ -1,4 +1,18 @@
-const cards = ['lumber', 'brick', 'wool', 'grain', 'ore', 'devcardback'];
+const bankCards = ['lumber', 'brick', 'wool', 'grain', 'ore', 'devcardback'];
+const handCards = ['lumber', 'brick', 'wool', 'grain', 'ore', 'knight', 'vp', 'monopoly', 'roadbuilding', 'yearofplenty'];
+
+const handCardIdToName = {
+    1: 'lumber',
+    2: 'brick',
+    3: 'wool',
+    4: 'grain',
+    5: 'ore',
+    7: 'knight',
+    8: 'vp',
+    9: 'monopoly',
+    10: 'roadbuilding',
+    11: 'yearofplenty',
+}
 
 // Tile IDs in WebSocket messages
 const tileTypeToResourceName = {
@@ -43,6 +57,7 @@ const usernameToColorMap = {};
 
 const eventHandlers = {
     7: handleGameLogEvent,
+    8: handlePlayOrderEvent,
     9: handleTurnStateEvent,
     10: handleBankStateEvent,
     // 11: handleDiceRollEvent,
@@ -59,7 +74,11 @@ const eventHandlers = {
 };
 
 const devCardIdMap = {
-
+    7: 'knight',
+    8: 'vp',
+    9: 'monopoly',
+    10: 'roadbuilding',
+    11: 'yearofplenty',
 }
 
 const KNIGHT_ID = 7;
@@ -105,6 +124,7 @@ const PROB_SIZE = 35;
 
 let gameLog = [];
 let currentTurnNumber = 0;
+let myColor = null;
 
 const gameLogInput = document.getElementById('game-log-input');
 const prevBtn = document.getElementById('prev-btn');
@@ -122,6 +142,8 @@ viewBox.setAttributeNS(null, "viewBox", `${getHexWidth() * -3} ${getHexHeight() 
 const robber = document.getElementById('robber');
 setRobberAttributes();
 drawBankCards();
+drawHandCards();
+
 
 eventIndexInput.addEventListener('input', (event) => {
     const newEventIndex = Math.min(gameLog.length - 1, Math.max(parseInt(event.target.value), 0));
@@ -326,8 +348,8 @@ function drawBankCards() {
     bankImage.setAttribute('y', CARD_SIZE / 4);
     cardCounts.appendChild(bankImage);
     const xOffset = 2 * CARD_SIZE;
-    for (let cardIndex = 0; cardIndex < cards.length; cardIndex++) {
-        const card = cards[cardIndex];
+    for (let cardIndex = 0; cardIndex < bankCards.length; cardIndex++) {
+        const card = bankCards[cardIndex];
         const cardCountGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
         const cardImage = document.createElementNS("http://www.w3.org/2000/svg", "image");
         setImageSource(cardImage, 'card', card);
@@ -337,7 +359,41 @@ function drawBankCards() {
         cardImage.setAttribute('y', 0);
         cardCountGroup.appendChild(cardImage);
         const cardCountText = document.createElementNS("http://www.w3.org/2000/svg", "text");
-        cardCountText.id = `${card}-count`;
+        cardCountText.id = `${card}-bank-count`;
+        cardCountText.textContent = 0;
+        cardCountText.setAttribute('x', cardIndex * CARD_SIZE + CARD_SIZE / 2 + xOffset);
+        cardCountText.setAttribute('y', CARD_SIZE * (1 / 4));
+        cardCountText.setAttribute('dominant-baseline', 'middle');
+        cardCountText.setAttribute('text-anchor', 'middle');
+        cardCountGroup.appendChild(cardCountText);
+        cardCounts.appendChild(cardCountGroup);
+    }
+}
+
+function drawHandCards() {
+    const cardCounts = document.getElementById('hand-counts');
+    const playerName = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    playerName.id = 'my-name';
+    playerName.setAttribute('dominant-baseline', 'middle');
+    playerName.setAttribute('text-anchor', 'middle');
+    playerName.setAttribute('width', CARD_SIZE);
+    playerName.setAttribute('height', CARD_SIZE);
+    playerName.setAttribute('x', CARD_SIZE);
+    playerName.setAttribute('y', CARD_SIZE / 2);
+    cardCounts.appendChild(playerName);
+    const xOffset = 2 * CARD_SIZE;
+    for (let cardIndex = 0; cardIndex < handCards.length; cardIndex++) {
+        const card = handCards[cardIndex];
+        const cardCountGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+        const cardImage = document.createElementNS("http://www.w3.org/2000/svg", "image");
+        setImageSource(cardImage, 'card', card);
+        cardImage.setAttribute('width', CARD_SIZE);
+        cardImage.setAttribute('height', CARD_SIZE * 1.5);
+        cardImage.setAttribute('x', cardIndex * CARD_SIZE + xOffset);
+        cardImage.setAttribute('y', 0);
+        cardCountGroup.appendChild(cardImage);
+        const cardCountText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+        cardCountText.id = `${card}-hand-count`;
         cardCountText.textContent = 0;
         cardCountText.setAttribute('x', cardIndex * CARD_SIZE + CARD_SIZE / 2 + xOffset);
         cardCountText.setAttribute('y', CARD_SIZE * (1 / 4));
@@ -540,7 +596,7 @@ function handleBankStateEvent(data, isReversed, eventIndex) {
         }
     }
     for (const [card, count] of Object.entries(cardCounts)) {
-        const cardCount = document.getElementById(`${card}-count`);
+        const cardCount = document.getElementById(`${card}-bank-count`);
         cardCount.textContent = count;
     }
 }
@@ -606,6 +662,24 @@ function handlePlayerUpdateEvent(data, isReversed, eventIndex) {
 
         const roadCell = getPlayerCell(username, 'longest-road');
         roadCell.innerHTML = player.hasLongestRoad ? `<b>${player.longestRoad}</b>` : player.longestRoad;
+
+        if (player.color == myColor) {
+            const playerName = document.getElementById('my-name');
+            playerName.textContent = username;
+            playerName.setAttribute("fill", colorIdMap[myColor])
+            playerName.setAttribute("font-weight", "bold")
+            const cardCounts = {}
+            for (const resourceId of player.resourceCards) {
+                cardCounts[resourceId] = (cardCounts[resourceId] || 0) + 1;
+            }
+            for (const devId of player.developmentCards) {
+                cardCounts[devId] = (cardCounts[devId] || 0) + 1;
+            }
+            for (const [cardId, cardName] of Object.entries(handCardIdToName)) {
+                const handCardCount = document.getElementById(`${cardName}-hand-count`);
+                handCardCount.textContent = cardCounts[cardId] || 0;
+            }
+        }
     }
 
 }
@@ -729,6 +803,14 @@ function handleGameRulesEvent(data, isReversed, eventIndex) {
     }
 }
 
+function handlePlayOrderEvent(data, isReversed, eventIndex) {
+    console.debug(`Play order event at ${eventIndex}`, data);
+    if (isReversed) {
+        console.error("Play order event is not reversible");
+    } else {
+        myColor = data.payload.myColor;
+    }
+}
 
 
 
