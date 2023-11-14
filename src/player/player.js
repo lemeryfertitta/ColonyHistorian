@@ -45,20 +45,21 @@ const eventHandlers = {
     7: handleGameLogEvent,
     9: handleTurnStateEvent,
     10: handleBankStateEvent,
-    11: handleDiceRollEvent,
+    // 11: handleDiceRollEvent,
     12: handlePlayerUpdateEvent,
     14: handleBoardDescriptionEvent,
     15: handleBuildEdgeEvent,
     16: handleBuildCornerEvent,
     17: handleMoveRobberEvent,
-    36: handleTradeOfferEvent,
-    37: handleTradeResponseEvent,
-    43: handleTradeEvent,
+    // 36: handleTradeOfferEvent,
+    // 37: handleTradeResponseEvent,
+    // 43: handleTradeEvent,
     44: handleGameRulesEvent,
     73: handleChatMessageEvent,
 };
 
 const KNIGHT_ID = 7;
+const TURN_STATE_EVENT = 9;
 const GAME_RULES_EVENT = 44;
 const PRE_GAME_EVENT_INDEX = -1;
 
@@ -97,7 +98,8 @@ const CARD_SIZE = 50;
 const PROB_SIZE = 35;
 
 let gameLog = [];
-let currentEventIndex = 0;
+let currentTurnNumber = 0;
+
 const gameLogInput = document.getElementById('game-log-input');
 const prevBtn = document.getElementById('prev-btn');
 const nextBtn = document.getElementById('next-btn');
@@ -117,9 +119,8 @@ drawBankCards();
 
 eventIndexInput.addEventListener('input', (event) => {
     const newEventIndex = Math.min(gameLog.length - 1, Math.max(parseInt(event.target.value), 0));
-    processEvents(currentEventIndex, newEventIndex);
-    currentEventIndex = newEventIndex;
-    displayCurrentEventLog();
+    processEvents(currentTurnNumber, newEventIndex);
+    currentTurnNumber = newEventIndex;
 });
 
 gameLogInput.addEventListener('change', (event) => {
@@ -128,6 +129,8 @@ gameLogInput.addEventListener('change', (event) => {
     reader.onload = () => {
         const fullGameLog = JSON.parse(reader.result);
         let reachedGameRulesEvent = false;
+        let processingTurnPlayer = null;
+        let processingTurnNumber = -1;
 
         // Process all events up to the game rules event and store the remainder in the gameLog
         for (let eventIndex = 0; eventIndex < fullGameLog.length; eventIndex++) {
@@ -137,7 +140,20 @@ gameLogInput.addEventListener('change', (event) => {
             const eventHandler = eventHandlers[eventType];
             if (eventHandler) {
                 if (reachedGameRulesEvent) {
-                    gameLog.push(fullGameLog[eventIndex]);
+                    if (eventType == TURN_STATE_EVENT) {
+                        const nextTurnPlayer = colorIdToUsernameMap[data.payload.currentTurnPlayerColor];
+                        if (nextTurnPlayer != processingTurnPlayer) {
+                            processingTurnNumber++;
+                            processingTurnPlayer = nextTurnPlayer;
+                            gameLog.push([data]);
+                        } else {
+                            console.debug("Ignoring turn state event for same player", data)
+                        }
+                    } else {
+                        if (processingTurnNumber >= 0) {
+                            gameLog[processingTurnNumber].push(data);
+                        }
+                    }
                 } else {
                     eventHandler(data, false, PRE_GAME_EVENT_INDEX);
                     reachedGameRulesEvent = eventType == GAME_RULES_EVENT;
@@ -147,8 +163,8 @@ gameLogInput.addEventListener('change', (event) => {
             }
         }
         eventIndexInput.max = gameLog.length - 1;
-        displayCurrentEventLog();
     };
+    console.log(gameLog);
     reader.readAsText(file);
 });
 
@@ -161,10 +177,9 @@ document.addEventListener('keydown', (event) => {
 });
 
 function prevEvent() {
-    if (currentEventIndex > 0) {
-        processEvents(currentEventIndex, currentEventIndex - 1);
-        currentEventIndex--;
-        displayCurrentEventLog();
+    if (currentTurnNumber > 0) {
+        processEvents(currentTurnNumber, currentTurnNumber - 1);
+        currentTurnNumber--;
     } else {
         console.log("Reached beginning of game log");
     }
@@ -172,41 +187,34 @@ function prevEvent() {
 }
 
 function nextEvent() {
-    if (currentEventIndex < gameLog.length - 1) {
-        currentEventIndex++;
-        processEvents(currentEventIndex, currentEventIndex + 1);
-        displayCurrentEventLog();
+    if (currentTurnNumber < gameLog.length - 1) {
+        currentTurnNumber++;
+        processEvents(currentTurnNumber, currentTurnNumber + 1);
     } else {
         console.log("Reached end of game log");
     }
 }
 
-function displayCurrentEventLog() {
-    const eventStr = JSON.stringify(gameLog[currentEventIndex], null, 2);
-    eventLog.innerHTML = `<pre>${eventStr}</pre>`;
-    eventIndexInput.value = currentEventIndex;
-    nextBtn.disabled = currentEventIndex == gameLog.length - 1;
-    prevBtn.disabled = currentEventIndex == 0;
-}
-
 /**
  * 
- * @param {*} startingIndex the index in the game log to start processing events from
- * @param {*} finishingIndex the index in the game log to stop processing events at
+ * @param {*} startingTurnNumber the index in the game log to start processing events from
+ * @param {*} endingTurnNumber the index in the game log to stop processing events at
  */
-function processEvents(startingIndex, finishingIndex) {
-    const isReversed = startingIndex > finishingIndex;
-    for (let eventIndex = startingIndex; eventIndex != finishingIndex; eventIndex += (isReversed ? -1 : 1)) {
-        const event = gameLog[eventIndex];
-        if (event.data && event.data.type) {
-            const eventHandler = eventHandlers[event.data.type];
+function processEvents(startingTurnNumber, endingTurnNumber) {
+    const isReversed = startingTurnNumber > endingTurnNumber;
+    const turnNumberLabel = document.getElementById('turn-number-label');
+    for (let turnNumber = startingTurnNumber; turnNumber != endingTurnNumber; turnNumber += (isReversed ? -1 : 1)) {
+        const turnLogs = gameLog[turnNumber];
+        turnNumberLabel.textContent = `Turn ${turnNumber}`;
+        for (let turnLogIndex = 0; turnLogIndex < turnLogs.length; turnLogIndex++) {
+            const log = turnLogs[turnLogIndex];
+            const eventHandler = eventHandlers[log.type];
+            const turnLogIdentifier = `${turnNumber}-${turnLogIndex}`;
             if (eventHandler) {
-                eventHandler(event.data, isReversed, eventIndex);
+                eventHandler(log, isReversed, turnLogIdentifier);
             } else {
-                console.debug(`No event handler for event ${eventIndex} with type ${event.data.type}`, event);
+                console.debug(`No event handler for log ${turnLogIdentifier} with type ${log.type}`, log);
             }
-        } else {
-            console.debug(`Event ${eventIndex} is missing a data or data.type field`, event);
         }
     }
 }

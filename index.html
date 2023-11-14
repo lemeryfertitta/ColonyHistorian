@@ -107,10 +107,10 @@
         <div id="right-container">
             <div id="controls-container">
                 <input type="file" id="game-log-input">
+                <label id="turn-number-label" for="event-index">Turn Number: </label>
+                <input type="range" id="event-index" value="0" min="0" class="slider">
                 <button id="prev-btn" disabled>Prev</button>
                 <button id="next-btn" disabled>Next</button>
-                <label for="event-index">Current Event Index:</label>
-                <input type="range" id="event-index" value="0" min="0" class="slider">
             </div>
             <div id="log-container"></div>
             <div id="chat-container"></div>
@@ -138,7 +138,7 @@
             </div>
         </div>
     </div>
-    <script src="player.js"></script>
+    <script src="src/player/player.js"></script>
 </body>
 
 </html>
