@@ -1,6 +1,5 @@
 # TODO List
 
-- [] Display your development and resource cards
 - [] Improve port drawing
 - [] Improve log message text for icons
 - [] Improve road appearance
@@ -9,4 +8,5 @@
 - [] Improve player table with icons
 - [] Automate log download (at end of game?) in extension
 - [] Extension in other browsers
-- [] Fix player container reverse delay (caused by single player updates)
+- [] Fix player state update between turns when reversing by pre-populating player states for whole game
+- [] Fix behavior around first and last turns when toggling and on initial load
