@@ -146,7 +146,7 @@ drawHandCards();
 
 
 eventIndexInput.addEventListener('input', (event) => {
-    const newEventIndex = Math.min(gameLog.length - 1, Math.max(parseInt(event.target.value), 0));
+    const newEventIndex = Math.min(gameLog.length, Math.max(parseInt(event.target.value), 0));
     processEvents(currentTurnNumber, newEventIndex);
 });
 
@@ -189,7 +189,7 @@ gameLogInput.addEventListener('change', (event) => {
                 console.debug(`No event handler for event ${eventIndex} with type ${eventType}`, event);
             }
         }
-        eventIndexInput.max = gameLog.length - 1;
+        eventIndexInput.max = gameLog.length;
     };
     console.log(gameLog);
     reader.readAsText(file);
@@ -213,7 +213,7 @@ function prevEvent() {
 }
 
 function nextEvent() {
-    if (currentTurnNumber < gameLog.length - 1) {
+    if (currentTurnNumber < gameLog.length) {
         processEvents(currentTurnNumber, currentTurnNumber + 1);
     } else {
         console.log("Reached end of game log");
@@ -230,15 +230,19 @@ function processEvents(startingTurnNumber, endingTurnNumber) {
     const turnNumberLabel = document.getElementById('turn-number-label');
     for (let turnNumber = startingTurnNumber; turnNumber != endingTurnNumber; turnNumber += (isReversed ? -1 : 1)) {
         const turnLogs = gameLog[turnNumber];
-        for (let turnLogIndex = 0; turnLogIndex < turnLogs.length; turnLogIndex++) {
-            const log = turnLogs[turnLogIndex];
-            const eventHandler = eventHandlers[log.type];
-            const turnLogIdentifier = `${turnNumber}-${turnLogIndex}`;
-            if (eventHandler) {
-                eventHandler(log, isReversed, turnLogIdentifier);
-            } else {
-                console.debug(`No event handler for log ${turnLogIdentifier} with type ${log.type}`, log);
+        if (turnLogs) {
+            for (let turnLogIndex = 0; turnLogIndex < turnLogs.length; turnLogIndex++) {
+                const log = turnLogs[turnLogIndex];
+                const eventHandler = eventHandlers[log.type];
+                const turnLogIdentifier = `${turnNumber}-${turnLogIndex}`;
+                if (eventHandler) {
+                    eventHandler(log, isReversed, turnLogIdentifier);
+                } else {
+                    console.debug(`No event handler for log ${turnLogIdentifier} with type ${log.type}`, log);
+                }
             }
+        } else {
+            console.debug(`No logs for turn ${turnNumber}`);
         }
     }
     currentTurnNumber = endingTurnNumber;
