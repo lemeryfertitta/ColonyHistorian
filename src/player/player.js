@@ -26,7 +26,6 @@ const tileTypeToResourceName = {
 
 // Port IDs in WebSocket messages
 const portTypeToResourceName = {
-    1: 'any',
     2: 'lumber',
     3: 'brick',
     4: 'wool',
@@ -119,8 +118,10 @@ const messageMappers = {
 const HEX_SIZE = 50;
 const BUILDING_SIZE = 40;
 const ROBBER_SIZE = 35;
-const CARD_SIZE = 50;
+const CARD_SIZE = 40;
 const PROB_SIZE = 35;
+const PORT_SIZE = 40;
+const DOCK_SIZE = 4;
 
 let gameLog = [];
 let currentTurnNumber = 0;
@@ -138,7 +139,7 @@ const hexTilesGroup = document.getElementById('hex-tiles');
 const hexEdgesGroup = document.getElementById('hex-edges');
 const hexCornersGroup = document.getElementById('hex-corners');
 const viewBox = document.getElementById('view-box');
-viewBox.setAttributeNS(null, "viewBox", `${getHexWidth() * -3} ${getHexHeight() * -3} ${getHexWidth() * 6} ${getHexHeight() * 6}`)
+viewBox.setAttributeNS(null, "viewBox", `${getHexWidth() * -4} ${getHexHeight() * -3} ${getHexWidth() * 8} ${getHexHeight() * 6}`)
 const robber = document.getElementById('robber');
 setRobberAttributes();
 drawBankCards();
@@ -439,18 +440,55 @@ function drawProbability(hexFaceCenter, number) {
 }
 
 /**
+ * Draw a dashed line to represent the dock
+ * 
+ * @param {*} p1 Starting point (x, y) of dock line
+ * @param {*} p2 Ending point (x, y) of dock line
+ */
+function drawDock(p1, p2) {
+    const dockLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    dockLine.setAttribute('x1', p1.x);
+    dockLine.setAttribute('y1', p1.y);
+    dockLine.setAttribute('x2', p2.x);
+    dockLine.setAttribute('y2', p2.y);
+    dockLine.setAttribute('stroke', 'brown');
+    dockLine.setAttribute('stroke-width', DOCK_SIZE);
+    dockLine.setAttribute('stroke-dasharray', DOCK_SIZE)
+    hexTilesGroup.appendChild(dockLine);
+}
+
+/**
+ * Draw the port image and dock lines for a port at a given edge
+ * 
  * @param {*} portEdge the grid coordinates of the port edge to draw
  */
 function drawPort(portEdge) {
-    const port = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    // TODO: Draw port icon as center of outer hexFace with lines to the two corners defining the port
-    port.textContent = portTypeToResourceName[portEdge.portType];
-    port.setAttribute('dominant-baseline', 'middle');
-    port.setAttribute('text-anchor', 'middle');
-    const coordinates = edgeMidpointPixel(hexEdgeGridToPixels(portEdge.hexEdge));
-    port.setAttribute('x', coordinates.x);
-    port.setAttribute('y', coordinates.y);
-    hexTilesGroup.appendChild(port);
+    const hexEdgePixels = hexEdgeGridToPixels(portEdge.hexEdge)
+    let portHexX = portEdge.hexEdge.x;
+    let portHexY = portEdge.hexEdge.y;
+    if (portEdge.hexEdge.z == 0) {
+        portHexY += portHexY < 0 ? -1 : 0;
+    } else if (portEdge.hexEdge.z == 1) {
+        portHexX += portHexX > 0 ? 0 : -1;
+    } else if (portEdge.hexEdge.z == 2) {
+        portHexX += portHexX > 0 ? 0 : -1;
+        portHexY += portHexX > 0 ? 0 : 1;
+    } else {
+        console.error("Unexpected z value when drawing ports", portEdge);
+    }
+    hexFaceCenter = hexFaceGridToPixel({ x: portHexX, y: portHexY });
+
+    drawDock(hexEdgePixels.p1, hexFaceCenter);
+    drawDock(hexEdgePixels.p2, hexFaceCenter);
+
+    const portImage = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+    setImageSource(portImage, 'port', portTypeToResourceName[portEdge.portType]);
+    portImage.setAttribute('width', PORT_SIZE);
+    portImage.setAttribute('height', PORT_SIZE);
+
+    portImage.setAttribute('x', hexFaceCenter.x - PORT_SIZE / 2);
+    portImage.setAttribute('y', hexFaceCenter.y - PORT_SIZE / 2);
+    hexTilesGroup.appendChild(portImage);
 }
 
 function setRobberAttributes() {

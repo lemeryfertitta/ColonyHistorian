@@ -1,6 +1,5 @@
 # TODO List
 
-- [] Improve port drawing
 - [] Improve log message text for icons
 - [] Improve road appearance
 - [] Find and map remaining color IDs
