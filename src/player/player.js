@@ -212,17 +212,16 @@ const nextBtn = document.getElementById('next-btn');
 const chatContainer = document.getElementById('chat-container');
 const logContainer = document.getElementById('log-container');
 const eventIndexInput = document.getElementById('event-index');
-const eventLog = document.getElementById('event-log');
 const hexGrid = document.getElementById('hex-grid');
 const hexTilesGroup = document.getElementById('hex-tiles');
 const hexEdgesGroup = document.getElementById('hex-edges');
 const hexCornersGroup = document.getElementById('hex-corners');
-const viewBox = document.getElementById('view-box');
-viewBox.setAttributeNS(null, "viewBox", `${getHexWidth() * -4} ${getHexHeight() * -3} ${getHexWidth() * 8} ${getHexHeight() * 6}`)
+const bankCounts = document.getElementById('bank-counts');
+const handCounts = document.getElementById('hand-counts');
 const robber = document.getElementById('robber');
-setRobberAttributes();
-drawBankCards();
-drawHandCards();
+const playerTable = document.getElementById('player-table');
+const turnNumberLabel = document.getElementById('turn-number-label');
+initialize();
 
 
 eventIndexInput.addEventListener('input', (event) => {
@@ -234,6 +233,7 @@ gameLogInput.addEventListener('change', (event) => {
     const file = event.target.files[0];
     const reader = new FileReader();
     reader.onload = () => {
+        reset();
         const fullGameLog = JSON.parse(reader.result);
         let reachedGameRulesEvent = false;
         let processingTurnPlayer = null;
@@ -307,7 +307,6 @@ function nextEvent() {
  */
 function processEvents(startingTurnNumber, endingTurnNumber) {
     const isReversed = startingTurnNumber > endingTurnNumber;
-    const turnNumberLabel = document.getElementById('turn-number-label');
     for (let turnNumber = startingTurnNumber; turnNumber != endingTurnNumber; turnNumber += (isReversed ? -1 : 1)) {
         const turnLogs = gameLog[turnNumber];
         if (turnLogs) {
@@ -424,14 +423,13 @@ function setImageSource(element, image_type, image_subtype,) {
  * Fill in the bank container with cards and counts, initially all set to 0
  */
 function drawBankCards() {
-    const cardCounts = document.getElementById('bank-counts');
     const bankImage = document.createElementNS("http://www.w3.org/2000/svg", "image");
     setImageSource(bankImage, 'bank');
     bankImage.setAttribute('width', CARD_SIZE);
     bankImage.setAttribute('height', CARD_SIZE);
     bankImage.setAttribute('x', CARD_SIZE / 2);
     bankImage.setAttribute('y', CARD_SIZE / 4);
-    cardCounts.appendChild(bankImage);
+    bankCounts.appendChild(bankImage);
     const xOffset = 2 * CARD_SIZE;
     for (let cardIndex = 0; cardIndex < bankCards.length; cardIndex++) {
         const card = bankCards[cardIndex];
@@ -451,12 +449,11 @@ function drawBankCards() {
         cardCountText.setAttribute('dominant-baseline', 'middle');
         cardCountText.setAttribute('text-anchor', 'middle');
         cardCountGroup.appendChild(cardCountText);
-        cardCounts.appendChild(cardCountGroup);
+        bankCounts.appendChild(cardCountGroup);
     }
 }
 
 function drawHandCards() {
-    const cardCounts = document.getElementById('hand-counts');
     const playerName = document.createElementNS("http://www.w3.org/2000/svg", "text");
     playerName.id = 'my-name';
     playerName.setAttribute('dominant-baseline', 'middle');
@@ -465,7 +462,7 @@ function drawHandCards() {
     playerName.setAttribute('height', CARD_SIZE);
     playerName.setAttribute('x', CARD_SIZE);
     playerName.setAttribute('y', CARD_SIZE / 2);
-    cardCounts.appendChild(playerName);
+    handCounts.appendChild(playerName);
     const xOffset = 2 * CARD_SIZE;
     for (let cardIndex = 0; cardIndex < handCards.length; cardIndex++) {
         const card = handCards[cardIndex];
@@ -485,7 +482,7 @@ function drawHandCards() {
         cardCountText.setAttribute('dominant-baseline', 'middle');
         cardCountText.setAttribute('text-anchor', 'middle');
         cardCountGroup.appendChild(cardCountText);
-        cardCounts.appendChild(cardCountGroup);
+        handCounts.appendChild(cardCountGroup);
     }
 }
 
@@ -576,6 +573,11 @@ function setRobberAttributes() {
     robber.setAttribute('width', ROBBER_SIZE);
     robber.setAttribute('height', ROBBER_SIZE);
     robber.setAttribute('visibility', 'hidden');
+}
+
+function setViewboxAttributes() {
+    const viewBox = document.getElementById('view-box');
+    viewBox.setAttributeNS(null, "viewBox", `${getHexWidth() * -4} ${getHexHeight() * -3} ${getHexWidth() * 8} ${getHexHeight() * 6}`)
 }
 
 /**
@@ -798,7 +800,6 @@ function getPlayerRow(username) {
     } else {
         const newRow = document.createElement('tr');
         newRow.id = `player-${username}`;
-        const playerTable = document.getElementById('player-table');
         playerTable.appendChild(newRow);
         return newRow;
     }
@@ -994,6 +995,28 @@ function handlePlayOrderEvent(data, isReversed, eventIndex) {
     } else {
         myColor = data.payload.myColor;
     }
+}
+
+function reset() {
+    hexTilesGroup.innerHTML = '';
+    hexEdgesGroup.innerHTML = '';
+    hexCornersGroup.innerHTML = '';
+    chatContainer.innerHTML = '';
+    logContainer.innerHTML = '';
+    playerTable.innerHTML = '';
+    turnNumberLabel.innerHTML = '';
+    eventIndexInput.value = 0;
+    gameLog = [];    
+    currentTurnNumber = 0;
+    myColor = null;
+    initialize();
+}
+
+function initialize() {
+    setViewboxAttributes();
+    setRobberAttributes();
+    drawBankCards();
+    drawHandCards();
 }
 
 prevBtn.addEventListener('click', prevEvent);
