@@ -80,6 +80,64 @@ const devCardIdMap = {
     11: 'yearofplenty',
 }
 
+const cardStringTranslations = {
+    "developementcard": "card_devcardback",
+}
+
+const wordReplacements = {
+    "brick": "card_brick",
+    "grain": "card_grain",
+    "wheat": "card_grain",
+    "lumber": "card_lumber",
+    "wood": "card_lumber",
+    "ore": "card_ore",
+    "sheep": "card_wool",
+    "wool": "card_wool",
+    "city": "city_black",
+    "settlement": "settlement_black",
+    "largestarmy": "icon_largest_army",
+    "longestroad": "icon_longest_road",
+}
+
+const commandReplacements = {
+    ":road:": "road_black",
+    ":card_brick:": "card_brick",
+    ":card_grain:": "card_grain",
+    ":card_lumber:": "card_lumber",
+    ":card_ore:": "card_ore",
+    ":card_wool:": "card_wool",
+    ":card_knight:": "card_knight",
+    ":card_vp:": "card_vp",
+    ":card_monopoly:": "card_monopoly",
+    ":card_roadbuilding:": "card_roadbuilding",
+    ":card_yearofplenty:": "card_yearofplenty",
+    ":card_devcardback:": "card_devcardback",
+    ":card_rescardback:": "card_rescardback",
+    ":robber:": "icon_robber",
+    ":dice:1": "dice_1",
+    ":dice:2": "dice_2",
+    ":dice:3": "dice_3",
+    ":dice:4": "dice_4",
+    ":dice:5": "dice_5",
+    ":dice:6": "dice_6",
+    ":prob:2": "prob_2",
+    ":prob:3": "prob_3",
+    ":prob:4": "prob_4",
+    ":prob:5": "prob_5",
+    ":prob:6": "prob_6",
+    ":prob:8": "prob_8",
+    ":prob:9": "prob_9",
+    ":prob:10": "prob_10",
+    ":prob:11": "prob_11",
+    ":prob:12": "prob_12",
+    ":tile_desert:": "tile_desert",
+    ":tile_lumber:": "tile_lumber",
+    ":tile_brick:": "tile_brick",
+    ":tile_wool:": "tile_wool",
+    ":tile_grain:": "tile_grain",
+    ":tile_ore:": "tile_ore",
+}
+
 const KNIGHT_ID = 7;
 const TURN_STATE_EVENT = 9;
 const GAME_RULES_EVENT = 44;
@@ -88,30 +146,30 @@ const PRE_GAME_EVENT_INDEX = -1;
 
 // Strings in game log messages
 const messageMappers = {
-    "strings:socket.playerRolledDice": (options) => `${getPlayerNameString(options.playerName)} rolled ${options.diceString}`,
-    "strings:socket.playerMovedRobber": (options) => `${getPlayerNameString(options.playerName)} moved the robber to ${options.tileChatString}`,
-    "strings:socket.playerPlacedPiece": (options) => `${getPlayerNameString(options.playerName)} built a ${options.pieceString}`,
-    "strings:socket.playerReceivedStartingResources": (options) => `${getPlayerNameString(options.playerName)} received starting resources ${options.cardsString}`,
-    "strings:socket.playerGotCards": (options) => `${getPlayerNameString(options.playerName)} received ${options.cardsString}`,
-    "strings:socket.playerBuiltPiece": (options) => `${getPlayerNameString(options.playerName)} built a ${options.pieceString}`,
-    "strings:socket.playerWantsToTradeWith": (options) => `${getPlayerNameString(options.playerName)} wants to trade ${options.wantedCardString} for ${options.offeredCardString}`,
+    "strings:socket.playerRolledDice": (options) => `${options.playerName} rolled ${options.diceString}`,
+    "strings:socket.playerMovedRobber": (options) => `${options.playerName} moved the robber to ${options.tileChatString}`,
+    "strings:socket.playerPlacedPiece": (options) => `${options.playerName} placed a ${options.pieceString}`,
+    "strings:socket.playerReceivedStartingResources": (options) => `${options.playerName} received starting resources ${options.cardsString}`,
+    "strings:socket.playerGotCards": (options) => `${options.playerName} received ${options.cardsString}`,
+    "strings:socket.playerBuiltPiece": (options) => `${options.playerName} built a ${options.pieceString}`,
+    "strings:socket.playerWantsToTradeWith": (options) => `${options.playerName} wants to trade ${options.wantedCardString} for ${options.offeredCardString}`,
     "strings:socket.tileBlockedByRobber": (options) => `${options.tileString} is blocked by the robber`,
-    "strings:socket.stolenResourceCards.thief": (options) => `You stole ${options.cardString} from ${getPlayerNameString(options.playerName)}`,
-    "strings:socket.stolenResourceCards.victim": (options) => `${getPlayerNameString(options.playerName)} stole ${options.cardString} from you`,
-    "strings:socket.stolenResourceCards.closed": (options) => `${getPlayerNameString(options.thiefName)} stole from ${getPlayerNameString(options.victimName)}`,
-    "strings:socket.playerBoughtCard": (options) => `${getPlayerNameString(options.playerName)} bought a development card`,
-    "strings:socket.playerTradedWithBank": (options) => `${getPlayerNameString(options.playerName)} traded ${options.givenCardString} for ${options.receivedCardString} with the bank`,
-    "strings:socket.playerWantsToCounterOfferWith": (options) => `${getPlayerNameString(options.counterOfferCreator)} wants to counter offer with ${options.offeredCardString} for ${options.wantedCardString}`,
-    "strings:socket.playerTradedWithPlayer": (options) => `${getPlayerNameString(options.playerName)} traded ${options.givenCardString} for ${options.receivedCardString} with ${getPlayerNameString(options.acceptingPlayerName)}`,
-    "strings:socket.playerPlayedDevelopmentCard": (options) => `${getPlayerNameString(options.playerName)} played a ${options.cardImage}`,
-    "strings:socket.playerTookFromBank": (options) => `${getPlayerNameString(options.playerName)} took ${options.cardString} from the bank`,
-    "strings:socket.playerReceivedAchievement": (options) => `${getPlayerNameString(options.playerName)} took ${options.achievementString}`,
-    "strings:socket.playerStoleUsingMonopoly": (options) => `${getPlayerNameString(options.playerName)} stole ${options.amountStolen} ${options.cardString} using a monopoly`,
-    "strings:socket.playerPassedAchievementTo": (options) => `${getPlayerNameString(options.newPlayerName)} took ${options.achievementString} from ${getPlayerNameString(options.oldPlayerName)}`,
-    "strings:socket.playerDiscarded": (options) => `${getPlayerNameString(options.playerName)} discarded ${options.cardString}`,
-    "strings:socket.playerWonTheGame": (options) => `${getPlayerNameString(options.playerName)} won the game!`,
-    "strings:socket.playerDisconnected": (options) => `${getPlayerNameString(options.playerName)} disconnected`,
-    "strings:socket.playerReconnected": (options) => `${getPlayerNameString(options.playerName)} reconnected`,
+    "strings:socket.stolenResourceCards.thief": (options) => `${colorIdToUsernameMap[myColor]} stole ${options.cardString} from ${options.playerName}`,
+    "strings:socket.stolenResourceCards.victim": (options) => `${options.playerName} stole ${options.cardString} from you`,
+    "strings:socket.stolenResourceCards.closed": (options) => `${options.thiefName} stole from ${options.victimName}`,
+    "strings:socket.playerBoughtCard": (options) => `${options.playerName} bought a development card`,
+    "strings:socket.playerTradedWithBank": (options) => `${options.playerName} traded ${options.givenCardString} for ${options.receivedCardString} with the bank`,
+    "strings:socket.playerWantsToCounterOfferWith": (options) => `${options.counterOfferCreator} wants to counter offer with ${options.offeredCardString} for ${options.wantedCardString}`,
+    "strings:socket.playerTradedWithPlayer": (options) => `${options.playerName} traded ${options.givenCardString} for ${options.receivedCardString} with ${options.acceptingPlayerName}`,
+    "strings:socket.playerPlayedDevelopmentCard": (options) => `${options.playerName} played a ${options.cardImage}`,
+    "strings:socket.playerTookFromBank": (options) => `${options.playerName} took ${options.cardString} from the bank`,
+    "strings:socket.playerReceivedAchievement": (options) => `${options.playerName} took ${options.achievementString}`,
+    "strings:socket.playerStoleUsingMonopoly": (options) => `${options.playerName} stole ${options.amountStolen} ${options.cardString} using a monopoly`,
+    "strings:socket.playerPassedAchievementTo": (options) => `${options.newPlayerName} took ${options.achievementString} from ${options.oldPlayerName}`,
+    "strings:socket.playerDiscarded": (options) => `${options.playerName} discarded ${options.cardString}`,
+    "strings:socket.playerWonTheGame": (options) => `${options.playerName} won the game!`,
+    "strings:socket.playerDisconnected": (options) => `${options.playerName} disconnected`,
+    "strings:socket.playerReconnected": (options) => `${options.playerName} reconnected`,
 }
 
 // Scaling factors for images
@@ -122,6 +180,7 @@ const CARD_SIZE = 40;
 const PROB_SIZE = 35;
 const PORT_SIZE = 40;
 const DOCK_SIZE = 4;
+const TEXT_IMAGE_SIZE = 15;
 
 let gameLog = [];
 let currentTurnNumber = 0;
@@ -248,6 +307,7 @@ function processEvents(startingTurnNumber, endingTurnNumber) {
     }
     currentTurnNumber = endingTurnNumber;
     turnNumberLabel.textContent = `Turn ${currentTurnNumber}`;
+    eventIndexInput.value = currentTurnNumber;
 }
 
 /**
@@ -588,7 +648,7 @@ function drawMessage(message, eventIndex, container) {
     messageDiv.id = messageId;
     messageDiv.class = 'chat-message';
     const messageSpan = document.createElement('span');
-    messageSpan.innerHTML = message;
+    messageSpan.innerHTML = decorateMessage(message);
     messageDiv.appendChild(messageSpan);
     container.appendChild(messageDiv);
     container.scrollTop = container.scrollHeight;
@@ -613,6 +673,11 @@ function getMessageId(eventIndex) {
     return `message-${eventIndex}`;
 }
 
+/**
+ * 
+ * @param {*} username the name of the player to enhance
+ * @returns the html for a span element with the bolded and colored version of the player's name
+ */
 function getPlayerNameString(username) {
     const span = document.createElement('span');
     span.style.color = usernameToColorMap[username];
@@ -620,6 +685,37 @@ function getPlayerNameString(username) {
     span.textContent = username;
     return span.outerHTML
 }
+
+/**
+ * Decorate the message with images and styling to replace the various icons and usernames in text
+ * 
+ * @param {*} message the string to decorate with images or styling
+ * @returns the decorated message
+ */
+function decorateMessage(message) {
+    const span = document.createElement('span')
+    let decoratedMessage = message;
+    const img = document.createElement('img');
+    img.setAttribute('width', TEXT_IMAGE_SIZE);
+    img.setAttribute('height', TEXT_IMAGE_SIZE);
+    for (const [word, replacement] of Object.entries(wordReplacements)) {
+        const re = new RegExp(`\\b${word}\\b`, 'gi');
+        img.setAttribute('src', `https://colonist.io/dist/images/${replacement}.svg`);
+        decoratedMessage = decoratedMessage.replaceAll(re, img.outerHTML);
+    }
+    for (const [command, replacement] of Object.entries(commandReplacements)) {
+        const re = new RegExp(command, 'gi');
+        img.setAttribute('src', `https://colonist.io/dist/images/${replacement}.svg`);
+        decoratedMessage = decoratedMessage.replaceAll(re, img.outerHTML);
+    }
+    for (const username of Object.keys(usernameToColorMap)) {
+        const re = new RegExp(`\\b${username}\\b`, 'gi');
+        decoratedMessage = decoratedMessage.replaceAll(re, getPlayerNameString(username));
+    }
+    span.innerHTML = decoratedMessage;
+    return decoratedMessage;
+}
+
 
 function handleBankStateEvent(data, isReversed, eventIndex) {
     console.debug(`Bank state event at index ${eventIndex}`, data);
@@ -799,7 +895,7 @@ function handleChatMessageEvent(data, isReversed, eventIndex) {
         if (isReversed) {
             eraseMessage(eventIndex, chatContainer);
         } else {
-            drawMessage(`${getPlayerNameString(username)}: ${message}`, eventIndex, chatContainer);
+            drawMessage(`${username}: ${message}`, eventIndex, chatContainer);
         }
     }
 }
@@ -853,9 +949,6 @@ function handlePlayOrderEvent(data, isReversed, eventIndex) {
         myColor = data.payload.myColor;
     }
 }
-
-
-
 
 prevBtn.addEventListener('click', prevEvent);
 nextBtn.addEventListener('click', nextEvent);
