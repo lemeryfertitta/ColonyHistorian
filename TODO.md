@@ -2,25 +2,27 @@
 
 ## Pre-release
 
-- [] Fix player state update between turns when reversing by pre-populating player states for whole game
-- [] Fix behavior around first and last turns when toggling and on initial load
-- [] Fix behavior when loading a new file after one has already been loaded
-- [] Fix jitter when using slider (likely need to manually update the value only on arrow/button input)
-- [] Make road colors gradient using light/dark colors defined in colonist js
-- [] Make per turn text more clear (maybe prefix with turn number?)
-- [] Make distinction between last placement turn and first dice roll
-- [] Release chrome extension
-- [] Make a gif of usage
-- [] Update README with usage instructions, gif
-- [] Post about project on reddit and discord
+- Fix player state update between turns when reversing by pre-populating player states for whole game
+- Fix behavior around first and last turns when toggling and on initial load
+- Fix behavior when loading a new file after one has already been loaded
+- Fix jitter when using slider (likely need to manually update the value only on arrow/button input)
+- Make road colors gradient using light/dark colors defined in colonist js
+- Make per turn text more clear (maybe prefix with turn number?)
+- Make distinction between last placement turn and first dice roll
+- Code cleanup (constants, documentation, DRY)
+- Make a new icon for extension
+- Release chrome extension
+- Make a gif of usage
+- Update README with usage instructions, gif
+- Post about project on reddit and discord
 
 ## Post-release
 
-- [] Improve icon sizing and text readability in chat/log messages
-- [] Handle mid-game refreshes
-- [] Improve player table appearance (icons, sizing)
-- [] Improve bank and hand appearance (count clarity on icons, maybe dynamic icons for player hand?)
-- [] Decrease log size (remove unused lines, compress)
-- [] Improve performance when rapidly scrolling through turns
-- [] Get extension to work in firefox (may have to figure out how to do extension without MAIN world directive)
-- [] Consider hosting log storage and replayer
+- Improve icon sizing and text readability in chat/log messages
+- Handle mid-game refreshes
+- Improve player table appearance (icons, sizing)
+- Improve bank and hand appearance (count clarity on icons, maybe dynamic icons for player hand?)
+- Decrease log size (remove unused lines, compress)
+- Improve performance when rapidly scrolling through turns
+- Get extension to work in firefox (may have to figure out how to do extension without MAIN world directive)
+- Consider hosting log storage and replayer
