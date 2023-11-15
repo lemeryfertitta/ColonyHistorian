@@ -603,24 +603,50 @@ function eraseCorner(hexCorner, color, buildingTypeId) {
 
 }
 
+/**
+ * 
+ * @param {*} coordinates start and end coordinates of the road
+ * @param {string} color the color of the road to draw
+ * @param {number} width the width of the road to draw
+ * @returns an SVG line element representing the road
+ */
+function getRoadLine(coordinates, color, width) {
+    const roadLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    roadLine.setAttribute('x1', coordinates.p1.x);
+    roadLine.setAttribute('y1', coordinates.p1.y);
+    roadLine.setAttribute('x2', coordinates.p2.x);
+    roadLine.setAttribute('y2', coordinates.p2.y);
+    roadLine.setAttribute('stroke', color);
+    roadLine.setAttribute('stroke-width', width);
+    roadLine.setAttribute('stroke-linecap', 'round');
+    return roadLine;
+}
+
+/**
+ * 
+ * @param {*} hexEdge the grid coordinates of the edge to draw
+ * @param {number} color the color ID of the player who owns the road
+ */
 function drawEdge(hexEdge, color) {
     const buildingId = getDrawnElementId('edge', hexEdge);
     const existingBuilding = document.getElementById(buildingId);
     if (existingBuilding != null) {
         hexEdgesGroup.removeChild(existingBuilding);
     }
-    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    line.id = buildingId;
+
     const coordinates = hexEdgeGridToPixels(hexEdge);
-    line.setAttribute('x1', coordinates.p1.x);
-    line.setAttribute('y1', coordinates.p1.y);
-    line.setAttribute('x2', coordinates.p2.x);
-    line.setAttribute('y2', coordinates.p2.y);
-    line.setAttribute('stroke', colorIdMap[color]);
-    line.setAttribute('stroke-width', 10);
-    hexEdgesGroup.appendChild(line);
+    const lineGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    lineGroup.id = buildingId;
+    lineGroup.appendChild(getRoadLine(coordinates, 'brown', 10));
+    lineGroup.appendChild(getRoadLine(coordinates, colorIdMap[color], 7));
+    hexEdgesGroup.appendChild(lineGroup);
+
 }
 
+/**
+ * 
+ * @param {*} hexEdge the grid coordinates of the edge to erase
+ */
 function eraseEdge(hexEdge) {
     const buildingId = getDrawnElementId('edge', hexEdge);
     const building = document.getElementById(buildingId);

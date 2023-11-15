@@ -1,6 +1,5 @@
 # TODO List
 
-- [] Improve road appearance
 - [] Find and map remaining color IDs
 - [] Map color IDs to exact color instead of css words
 - [] Improve player table with icons
