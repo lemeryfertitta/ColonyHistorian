@@ -34,13 +34,33 @@ const portTypeToResourceName = {
 }
 
 // Color IDs in WebSocket messages
-const colorIdMap = {
+const colorIdsToNames = {
     // TODO: Figure out remaining colors
     1: 'red',
     2: 'blue',
     3: 'orange',
     4: 'green',
     5: 'black',
+    6: 'bronze',
+    7: 'silver',
+    8: 'gold',
+    9: 'white',
+    10: 'purple',
+    11: 'mysticblue',
+}
+
+const colorNamesToHex = {
+    'red': '#E27174',
+    'blue': '#223697',
+    'orange': '#E09742',
+    'green': '#62B95D',
+    'black': '#3e3e3e',
+    'bronze': '#a86755',
+    'silver': '#848484',
+    'gold': '#c7ae61',
+    'white': '#9E9E9E',
+    'purple': '#9D55AF',
+    'mysticblue': '#256CA7',
 }
 
 const buildingTypeIdMap = {
@@ -571,7 +591,7 @@ function drawCorner(hexCorner, color, buildingTypeId) {
         hexCornersGroup.removeChild(existingBuilding);
     }
     const building = document.createElementNS('http://www.w3.org/2000/svg', 'image');
-    setImageSource(building, buildingType, colorIdMap[color]);
+    setImageSource(building, buildingType, colorIdsToNames[color]);
     building.id = buildingId;
     building.setAttribute('width', BUILDING_SIZE);
     building.setAttribute('height', BUILDING_SIZE);
@@ -638,7 +658,7 @@ function drawEdge(hexEdge, color) {
     const lineGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     lineGroup.id = buildingId;
     lineGroup.appendChild(getRoadLine(coordinates, 'brown', 10));
-    lineGroup.appendChild(getRoadLine(coordinates, colorIdMap[color], 7));
+    lineGroup.appendChild(getRoadLine(coordinates, colorNamesToHex[colorIdsToNames[color]], 7));
     hexEdgesGroup.appendChild(lineGroup);
 
 }
@@ -706,7 +726,7 @@ function getMessageId(eventIndex) {
  */
 function getPlayerNameString(username) {
     const span = document.createElement('span');
-    span.style.color = usernameToColorMap[username];
+    span.style.color = colorNamesToHex[usernameToColorMap[username]];
     span.style.fontWeight = 'bold';
     span.textContent = username;
     return span.outerHTML
@@ -803,7 +823,7 @@ function handlePlayerUpdateEvent(data, isReversed, eventIndex) {
     for (const player of data.payload) {
         const username = player.username;
         colorIdToUsernameMap[player.color] = username;
-        usernameToColorMap[username] = colorIdMap[player.color];
+        usernameToColorMap[username] = colorIdsToNames[player.color];
 
         const nameCell = getPlayerCell(username, 'name');
         nameCell.innerHTML = getPlayerNameString(username);
@@ -830,7 +850,7 @@ function handlePlayerUpdateEvent(data, isReversed, eventIndex) {
         if (player.color == myColor) {
             const playerName = document.getElementById('my-name');
             playerName.textContent = username;
-            playerName.setAttribute("fill", colorIdMap[myColor])
+            playerName.setAttribute("fill", colorNamesToHex[colorIdsToNames[myColor]]);
             playerName.setAttribute("font-weight", "bold")
             const cardCounts = {}
             for (const resourceId of player.resourceCards) {
