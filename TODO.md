@@ -10,7 +10,6 @@
 - Make per turn text more clear (maybe prefix with turn number?)
 - Make distinction between last placement turn and first dice roll
 - Code cleanup (constants, documentation, DRY)
-- Make a new icon for extension
 - Release chrome extension
 - Make a gif of usage
 - Update README with usage instructions, gif
