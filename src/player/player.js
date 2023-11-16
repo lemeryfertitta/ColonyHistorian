@@ -328,6 +328,7 @@ gameLogInput.addEventListener("change", (event) => {
       }
     }
     eventIndexInput.max = gameLog.length;
+    eventIndexInput.disabled = false;
     processEvents(0);
     eventIndexInput.value = 0;
   };

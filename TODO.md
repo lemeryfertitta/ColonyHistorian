@@ -2,7 +2,6 @@
 
 ## Pre-release
 
-- Disable slider when no file is loaded
 - Fix jitter when using slider (likely need to manually update the value only on arrow/button input)
 - Fix turn highlight discrepancy between reverse and forward
 - Make road colors gradient using light/dark colors defined in colonist js
