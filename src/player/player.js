@@ -160,8 +160,8 @@ const commandReplacements = {
 
 const KNIGHT_ID = 7;
 const TURN_STATE_EVENT = 9;
+const BOARD_DESCRIPTION_EVENT = 14;
 const GAME_RULES_EVENT = 44;
-const PRE_GAME_EVENT_INDEX = -1;
 
 
 // Strings in game log messages
@@ -203,7 +203,7 @@ const DOCK_SIZE = 4;
 const TEXT_IMAGE_SIZE = 15;
 
 let gameLog = [];
-let currentTurnNumber = 0;
+let currentTurnNumber = -1;
 let myColor = null;
 
 const gameLogInput = document.getElementById('game-log-input');
@@ -226,7 +226,7 @@ initialize();
 
 eventIndexInput.addEventListener('input', (event) => {
     const newEventIndex = Math.min(gameLog.length, Math.max(parseInt(event.target.value), 0));
-    processEvents(currentTurnNumber, newEventIndex);
+    processEvents(newEventIndex);
 });
 
 gameLogInput.addEventListener('change', (event) => {
@@ -235,9 +235,8 @@ gameLogInput.addEventListener('change', (event) => {
     reader.onload = () => {
         reset();
         const fullGameLog = JSON.parse(reader.result);
-        let reachedGameRulesEvent = false;
         let processingTurnPlayer = null;
-        let processingTurnNumber = -1;
+        let processingTurnNumber = 0;
 
         // Process all events up to the game rules event and store the remainder in the gameLog
         for (let eventIndex = 0; eventIndex < fullGameLog.length; eventIndex++) {
@@ -246,30 +245,24 @@ gameLogInput.addEventListener('change', (event) => {
             const eventType = data.type;
             const eventHandler = eventHandlers[eventType];
             if (eventHandler) {
-                if (reachedGameRulesEvent) {
-                    if (eventType == TURN_STATE_EVENT) {
-                        const nextTurnPlayer = colorIdToUsernameMap[data.payload.currentTurnPlayerColor];
-                        if (nextTurnPlayer != processingTurnPlayer) {
-                            processingTurnNumber++;
-                            processingTurnPlayer = nextTurnPlayer;
-                            gameLog.push([data]);
-                        } else {
-                            console.debug("Ignoring turn state event for same player", data)
-                        }
-                    } else {
-                        if (processingTurnNumber >= 0) {
-                            gameLog[processingTurnNumber].push(data);
-                        }
+                if (eventType == TURN_STATE_EVENT) {
+                    const nextTurnPlayer = data.payload.currentTurnPlayerColor;
+                    if (nextTurnPlayer != 0 && nextTurnPlayer != processingTurnPlayer) {
+                        processingTurnNumber++;
+                        processingTurnPlayer = nextTurnPlayer;
                     }
-                } else {
-                    eventHandler(data, false, PRE_GAME_EVENT_INDEX);
-                    reachedGameRulesEvent = eventType == GAME_RULES_EVENT;
                 }
+                if (gameLog.length <= processingTurnNumber) {
+                    gameLog.push([]);
+                }
+                gameLog[processingTurnNumber].push(data);
             } else {
                 console.debug(`No event handler for event ${eventIndex} with type ${eventType}`, event);
             }
         }
         eventIndexInput.max = gameLog.length;
+        processEvents(0);
+        eventIndexInput.value = 0;
     };
     console.log(gameLog);
     reader.readAsText(file);
@@ -285,7 +278,8 @@ document.addEventListener('keydown', (event) => {
 
 function prevEvent() {
     if (currentTurnNumber > 0) {
-        processEvents(currentTurnNumber, currentTurnNumber - 1);
+        processEvents(currentTurnNumber - 1);
+        eventIndexInput.value = currentTurnNumber;
     } else {
         console.log("Reached beginning of game log");
     }
@@ -293,8 +287,9 @@ function prevEvent() {
 }
 
 function nextEvent() {
-    if (currentTurnNumber < gameLog.length) {
-        processEvents(currentTurnNumber, currentTurnNumber + 1);
+    if (currentTurnNumber < gameLog.length - 1) {
+        processEvents(currentTurnNumber + 1);
+        eventIndexInput.value = currentTurnNumber;
     } else {
         console.log("Reached end of game log");
     }
@@ -305,9 +300,12 @@ function nextEvent() {
  * @param {*} startingTurnNumber the index in the game log to start processing events from
  * @param {*} endingTurnNumber the index in the game log to stop processing events at
  */
-function processEvents(startingTurnNumber, endingTurnNumber) {
-    const isReversed = startingTurnNumber > endingTurnNumber;
-    for (let turnNumber = startingTurnNumber; turnNumber != endingTurnNumber; turnNumber += (isReversed ? -1 : 1)) {
+function processEvents(endingTurnNumber) {
+    const isReversed = currentTurnNumber > endingTurnNumber;
+    const direction = isReversed ? -1 : 1;
+    const startOffset = isReversed ? 0 : 1;
+    for (let turnNumber = currentTurnNumber + startOffset; turnNumber != endingTurnNumber + startOffset; turnNumber += direction) {
+        console.debug("Processing logs for turn", turnNumber, "with direction", direction);
         const turnLogs = gameLog[turnNumber];
         if (turnLogs) {
             for (let turnLogIndex = 0; turnLogIndex < turnLogs.length; turnLogIndex++) {
@@ -326,7 +324,8 @@ function processEvents(startingTurnNumber, endingTurnNumber) {
     }
     currentTurnNumber = endingTurnNumber;
     turnNumberLabel.textContent = `Turn ${currentTurnNumber}`;
-    eventIndexInput.value = currentTurnNumber;
+    nextBtn.disabled = currentTurnNumber >= gameLog.length - 1;
+    prevBtn.disabled = currentTurnNumber <= 0;
 }
 
 /**
@@ -869,25 +868,24 @@ function handlePlayerUpdateEvent(data, isReversed, eventIndex) {
 
 }
 
+
 function handleBoardDescriptionEvent(data, isReversed, eventIndex) {
     console.debug(`Board description event at index ${eventIndex}`, data);
-    if (eventIndex == PRE_GAME_EVENT_INDEX) {
-        // Draw pointy-top hex grid
-        // See https://www.redblobgames.com/grids/hexagons/ for explanation of hex grid coordinates
-        for (const tile of data.payload.tileState.tiles) {
-            const hexFaceCenter = hexFaceGridToPixel(tile.hexFace);
-            const resourceName = tileTypeToResourceName[tile.tileType];
-            drawHexFace(hexFaceCenter, resourceName);
-            if (resourceName != 'desert') {
-                drawProbability(hexFaceCenter, tile._diceNumber);
-            } else {
-                moveRobber(tile.hexFace);
-            }
+    // Draw pointy-top hex grid
+    // See https://www.redblobgames.com/grids/hexagons/ for explanation of hex grid coordinates
+    for (const tile of data.payload.tileState.tiles) {
+        const hexFaceCenter = hexFaceGridToPixel(tile.hexFace);
+        const resourceName = tileTypeToResourceName[tile.tileType];
+        drawHexFace(hexFaceCenter, resourceName);
+        if (resourceName != 'desert') {
+            drawProbability(hexFaceCenter, tile._diceNumber);
+        } else {
+            moveRobber(tile.hexFace);
         }
+    }
 
-        for (const portEdge of data.payload.portState.portEdges) {
-            drawPort(portEdge);
-        }
+    for (const portEdge of data.payload.portState.portEdges) {
+        drawPort(portEdge);
     }
 }
 
@@ -1007,7 +1005,7 @@ function reset() {
     turnNumberLabel.innerHTML = '';
     eventIndexInput.value = 0;
     gameLog = [];    
-    currentTurnNumber = 0;
+    currentTurnNumber = -1;
     myColor = null;
     initialize();
 }

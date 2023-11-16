@@ -3,11 +3,10 @@
 ## Pre-release
 
 - Fix player state update between turns when reversing by pre-populating player states for whole game
-- Fix behavior around first and last turns when toggling and on initial load
 - Fix jitter when using slider (likely need to manually update the value only on arrow/button input)
 - Make road colors gradient using light/dark colors defined in colonist js
 - Make per turn text more clear (maybe prefix with turn number?)
-- Make distinction between last placement turn and first dice roll
+- Make distinction between last placement turn and first dice roll, and 4th players placement turns
 - Code cleanup (constants, documentation, DRY, globals)
 - Release chrome extension
 - Make a gif of usage
