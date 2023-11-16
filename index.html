@@ -1,152 +1,212 @@
 <!DOCTYPE html>
 <html>
-
-<head>
-    <meta charset="UTF-8">
+  <head>
+    <meta charset="UTF-8" />
     <title>Colony Historian</title>
-    <link rel="icon" href="icon/icon.svg" type="image/x-icon"/>
-</head>
+    <link rel="icon" href="icon/icon.svg" type="image/x-icon" />
+  </head>
 
-<body>
+  <body>
     <style>
-        *,
-        *:after,
-        *:before {
-            box-sizing: border-box;
-        }
+      *,
+      *:after,
+      *:before {
+        box-sizing: border-box;
+      }
 
-        body {
-            margin: 0
-        }
+      body {
+        margin: 0;
+      }
 
-        main {
-            width: 100%;
-            height: 100%;
+      main {
+        width: 100%;
+        height: 100%;
 
-            display: -webkit-flex;
-            display: flex;
-            -webkit-flex-flow: column nowrap;
-            flex-flow: column nowrap;
-        }
+        display: -webkit-flex;
+        display: flex;
+        -webkit-flex-flow: column nowrap;
+        flex-flow: column nowrap;
+      }
 
-        #player-container {
-            margin: 20px 0;
-        }
+      #player-container {
+        margin: 20px 0;
+      }
 
-        #board-container {
-            height: 100%;
-            width: 60%;
-            float: left;
-            background: rgb(221, 221, 221);
-            background: radial-gradient(circle, rgba(221, 221, 221, 1) 0%, rgba(61, 0, 255, 1) 100%);
-        }
+      #board-container {
+        height: 100%;
+        width: 60%;
+        float: left;
+        background: rgb(221, 221, 221);
+        background: radial-gradient(
+          circle,
+          rgba(221, 221, 221, 1) 0%,
+          rgba(61, 0, 255, 1) 100%
+        );
+      }
 
-        #right-container {
-            height: 100%;
-            width: 40%;
-            float: right;
-            overflow-x: hidden;
-            overflow-y: scroll;
-            word-break: break-all;
-            font-family: open sans, sans-serif;
-            font-size: 1rem;
-            display: block;
-        }
+      #right-container {
+        height: 100%;
+        width: 40%;
+        float: right;
+        overflow-x: hidden;
+        overflow-y: scroll;
+        word-break: break-all;
+        font-family: open sans, sans-serif;
+        font-size: 1rem;
+        display: block;
+      }
 
-        #log-container {
-            height: 20vh;
-            width: 100%;
-            overflow-y: scroll;
-            flex: 1 auto;
-            border: solid 1px black;
-            padding: auto;
-            background: linear-gradient(11deg, rgba(221, 221, 221, 1) 0%, rgba(243, 243, 245, 1) 100%);
-        }
+      #log-container {
+        height: 20vh;
+        width: 100%;
+        overflow-y: scroll;
+        flex: 1 auto;
+        border: solid 1px black;
+        padding: auto;
+        background: linear-gradient(
+          11deg,
+          rgba(221, 221, 221, 1) 0%,
+          rgba(243, 243, 245, 1) 100%
+        );
+      }
 
-        #chat-container {
-            height: 20vh;
-            width: 100%;
-            overflow-y: scroll;
-            flex: 1 auto;
-            border: solid 1px black;
-            padding: auto;
-            background: linear-gradient(11deg, rgba(221, 221, 221, 1) 0%, rgba(243, 243, 245, 1) 100%);
-        }
+      #chat-container {
+        height: 20vh;
+        width: 100%;
+        overflow-y: scroll;
+        flex: 1 auto;
+        border: solid 1px black;
+        padding: auto;
+        background: linear-gradient(
+          11deg,
+          rgba(221, 221, 221, 1) 0%,
+          rgba(243, 243, 245, 1) 100%
+        );
+      }
 
-        #controls-container {
-            height: 7vh;
-            flex: 1 auto;
-            border: solid 1px black;
-            background: linear-gradient(11deg, rgba(221, 221, 221, 1) 0%, rgba(243, 243, 245, 1) 100%);
-        }
+      #controls-container {
+        height: 10vh;
+        flex: 1 auto;
+        border: solid 1px black;
+        background: linear-gradient(
+          11deg,
+          rgba(221, 221, 221, 1) 0%,
+          rgba(243, 243, 245, 1) 100%
+        );
+      }
 
-        #player-container {
-            height: 50vh;
-            flex: 1 auto;
-            border: solid 1px black;
-            background: linear-gradient(11deg, rgba(221, 221, 221, 1) 0%, rgba(243, 243, 245, 1) 100%);
-        }
+      #player-container {
+        height: 50vh;
+        flex: 1 auto;
+        border: solid 1px black;
+        background: linear-gradient(
+          11deg,
+          rgba(221, 221, 221, 1) 0%,
+          rgba(243, 243, 245, 1) 100%
+        );
+      }
 
-        #bank-container {
-            height: 10vh;
-            flex: 1 auto;
-            border: solid 1px black;
-            background: linear-gradient(11deg, rgba(221, 221, 221, 1) 0%, rgba(243, 243, 245, 1) 100%);
-        }
+      #bank-container {
+        height: 10vh;
+        flex: 1 auto;
+        border: solid 1px black;
+        background: linear-gradient(
+          11deg,
+          rgba(221, 221, 221, 1) 0%,
+          rgba(243, 243, 245, 1) 100%
+        );
+      }
 
-        #hand-container {
-            height: 10vh;
-            flex: 1 auto;
-            border: solid 1px black;
-            background: linear-gradient(11deg, rgba(221, 221, 221, 1) 0%, rgba(243, 243, 245, 1) 100%);
-        }
+      #hand-container {
+        height: 10vh;
+        flex: 1 auto;
+        border: solid 1px black;
+        background: linear-gradient(
+          11deg,
+          rgba(221, 221, 221, 1) 0%,
+          rgba(243, 243, 245, 1) 100%
+        );
+      }
+
+      #event-index {
+        width: 60%;
+        display: flex;
+        justify-content: center;
+        margin: auto;
+        margin-top: 1%;
+        margin-bottom: 1%;
+      }
+
+      #turn-button-container {
+        margin: auto;
+        display: flex;
+        justify-content: center;
+      }
+
+      #turn-number-label {
+        margin: 0% 2% 0% 2%;
+      }
+
+      #game-log-input {
+        margin: auto;
+        display: flex;
+        justify-content: center;
+      }
     </style>
     <div>
-        <div id="board-container">
-            <svg id="view-box">
-                <g id="hex-grid">
-                    <g id="hex-tiles"></g>
-                    <g id="hex-edges"></g>
-                    <g id="hex-corners"></g>
-                    <image id="robber"></image>
-                </g>
-            </svg>
+      <div id="board-container">
+        <svg id="view-box">
+          <g id="hex-grid">
+            <g id="hex-tiles"></g>
+            <g id="hex-edges"></g>
+            <g id="hex-corners"></g>
+            <image id="robber"></image>
+          </g>
+        </svg>
+      </div>
+      <div id="right-container">
+        <div id="controls-container">
+          <input type="file" id="game-log-input" />
+          <input
+            type="range"
+            id="event-index"
+            value="1"
+            min="1"
+            class="slider"
+            onkeydown="return false;"
+            disabled="true"
+          />
+          <div id="turn-button-container">
+            <button id="prev-btn" disabled>Prev</button>
+            <label id="turn-number-label" for="event-index"></label>
+            <button id="next-btn" disabled>Next</button>
+          </div>
         </div>
-        <div id="right-container">
-            <div id="controls-container">
-                <input type="file" id="game-log-input">
-                <label id="turn-number-label" for="event-index"></label>
-                <input type="range" id="event-index" value="1" min="1" class="slider" onkeydown="return false;" disabled="true">
-                <button id="prev-btn" disabled>Prev</button>
-                <button id="next-btn" disabled>Next</button>
-            </div>
-            <div id="log-container"></div>
-            <div id="chat-container"></div>
-            <div id="bank-container">
-                <svg id="bank-counts" style="width:100%;height:100%;"></svg>
-            </div>
-            <div id="hand-container">
-                <svg id="hand-counts" style="width:100%;height:100%;"></svg>
-            </div>
-            <div id="player-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>VPs</th>
-                            <th>Resources</th>
-                            <th>Devs</th>
-                            <th>Army</th>
-                            <th>Road</th>
-                        </tr>
-                    </thead>
-                    <tbody id="player-table">
-                    </tbody>
-                </table>
-            </div>
+        <div id="log-container"></div>
+        <div id="chat-container"></div>
+        <div id="bank-container">
+          <svg id="bank-counts" style="width: 100%; height: 100%"></svg>
         </div>
+        <div id="hand-container">
+          <svg id="hand-counts" style="width: 100%; height: 100%"></svg>
+        </div>
+        <div id="player-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>VPs</th>
+                <th>Resources</th>
+                <th>Devs</th>
+                <th>Army</th>
+                <th>Road</th>
+              </tr>
+            </thead>
+            <tbody id="player-table"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
     <script src="src/player/player.js"></script>
-</body>
-
+  </body>
 </html>
