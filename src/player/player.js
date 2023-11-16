@@ -255,7 +255,6 @@ const handCounts = document.getElementById("hand-counts");
 const robber = document.getElementById("robber");
 const playerTable = document.getElementById("player-table");
 const turnNumberLabel = document.getElementById("turn-number-label");
-initialize();
 
 eventIndexInput.addEventListener("input", (event) => {
   const newEventIndex = Math.min(
@@ -1101,14 +1100,13 @@ function reset() {
   logContainer.innerHTML = "";
   playerTable.innerHTML = "";
   turnNumberLabel.innerHTML = "";
+  handCounts.innerHTML = "";
+  bankCounts.innerHTML = "";
   eventIndexInput.value = 0;
   gameLog = [];
+  playerStateLog = [];
   currentTurnNumber = -1;
   myColor = null;
-  initialize();
-}
-
-function initialize() {
   setViewboxAttributes();
   setRobberAttributes();
   drawBankCards();
