@@ -1,27 +1,20 @@
 {
-    "name": "Colony Historian",
-    "description": "Recorder for Colonist.io games",
-    "version": "1.0",
-    "manifest_version": 3,
-    "icons": {
-        "16": "icon/icon_16.png",
-        "48": "icon/icon_48.png",
-        "128": "icon/icon_128.png"
-      },
-    "content_scripts": [
-        {
-            "world": "MAIN",
-            "js": [
-                "src/recorder/recorder.js"
-            ],
-            "matches": [
-                "https://colonist.io/*"
-            ],
-            "run_at": "document_start"
-        }
-    ],
-    "permissions": [
-        "activeTab",
-        "scripting"
-    ]
+  "name": "Colony Historian",
+  "description": "Recorder for Colonist.io games",
+  "version": "1.0",
+  "manifest_version": 3,
+  "icons": {
+    "16": "icon/icon_16.png",
+    "48": "icon/icon_48.png",
+    "128": "icon/icon_128.png"
+  },
+  "content_scripts": [
+    {
+      "world": "MAIN",
+      "js": ["src/recorder/recorder.js"],
+      "matches": ["https://colonist.io/*"],
+      "run_at": "document_start"
+    }
+  ],
+  "permissions": []
 }

@@ -53,14 +53,6 @@ const GAME_END_TYPE = 45;
         console.log("Error decoding message:", error);
       }
     });
-
-    wsAddListener(ws, "close", function (event) {
-      console.log("Connection closed", event);
-      if (content) {
-        saveLog();
-      }
-    });
-
     return ws;
   }.bind();
   window.WebSocket.prototype = OrigWebSocket.prototype;
@@ -73,7 +65,7 @@ function saveLog() {
   });
   const anchor = document.createElement("a");
   anchor.href = URL.createObjectURL(blob);
-  anchor.download = `${activeGameId}-${new Date().toISOString()}.json`;
+  anchor.download = `historian-${activeGameId}.json`;
   anchor.hidden = true;
   document.body.appendChild(anchor);
   anchor.click();
