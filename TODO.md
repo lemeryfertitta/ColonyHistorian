@@ -2,7 +2,6 @@
 
 ## Pre-release
 
-- Code cleanup (constants, documentation, DRY, globals)
 - Release chrome extension
 - Make a gif of usage
 - Update README with usage instructions, gif

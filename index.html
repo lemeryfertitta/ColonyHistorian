@@ -128,7 +128,7 @@
         );
       }
 
-      #event-index {
+      #turn-number-slider {
         width: 60%;
         display: flex;
         justify-content: center;
@@ -169,7 +169,7 @@
           <input type="file" id="game-log-input" />
           <input
             type="range"
-            id="event-index"
+            id="turn-number-slider"
             value="1"
             min="1"
             class="slider"
@@ -178,7 +178,7 @@
           />
           <div id="turn-button-container">
             <button id="prev-btn" disabled>Prev</button>
-            <label id="turn-number-label" for="event-index"></label>
+            <label id="turn-number-label" for="turn-number-slider"></label>
             <button id="next-btn" disabled>Next</button>
           </div>
         </div>
@@ -207,7 +207,9 @@
         </div>
       </div>
     </div>
+    <script src="src/player/hex_math.js"></script>
     <script src="src/player/game_replay.js"></script>
-    <script src="src/player/replay_controller.js"></script>
+    <script src="src/player/painter.js"></script>
+    <script src="src/player/controller.js"></script>
   </body>
 </html>
