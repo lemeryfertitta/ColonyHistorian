@@ -13,6 +13,7 @@
 
 ## Post-release
 
+- Game states (esp. dice frequency, robber info)
 - Improve icon sizing and text readability in chat/log messages
 - Handle mid-game refreshes
 - Improve player table appearance (icons, sizing)
