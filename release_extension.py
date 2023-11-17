@@ -13,7 +13,7 @@ def zip_extension():
     with zipfile.ZipFile(f"historian-{get_version()}.zip", "w") as zipf:
         zipf.write("manifest.json")
         zipf.write("src/recorder/recorder.js")
-        for root, _, files in os.walk("icon"):
+        for root, _, files in os.walk("media/icons"):
             for file in files:
                 zipf.write(os.path.join(root, file))
 
