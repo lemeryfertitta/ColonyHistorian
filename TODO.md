@@ -2,7 +2,6 @@
 
 ## Pre-release
 
-- Make road colors gradient using light/dark colors defined in colonist js
 - Make per turn text more clear (maybe prefix with turn number?)
 - Make distinction between last placement turn and first dice roll, and 4th players placement turns
 - Code cleanup (constants, documentation, DRY, globals)
@@ -13,6 +12,7 @@
 
 ## Post-release
 
+- Improve road appearance (maybe gradients or use road icons)
 - Game states (esp. dice frequency, robber info)
 - Improve icon sizing and text readability in chat/log messages
 - Handle mid-game refreshes
