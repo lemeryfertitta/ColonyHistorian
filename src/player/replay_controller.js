@@ -1,3 +1,5 @@
+// See https://www.redblobgames.com/grids/hexagons/ for explanation of hex grid coordinates
+
 const bankCards = ["lumber", "brick", "wool", "grain", "ore", "devcardback"];
 const handCards = [
   "lumber",
@@ -79,26 +81,12 @@ const buildingTypeIdMap = {
   2: "city",
 };
 
-const colorIdToUsernameMap = {
-  0: "bank",
-};
-
-const usernameToColorMap = {};
-
 const eventHandlers = {
-  7: handleGameLogEvent,
-  8: handlePlayOrderEvent,
-  9: handleTurnStateEvent,
-  10: handleBankStateEvent,
-  // 11: handleDiceRollEvent,
+  7: handleLogMessageEvent,
   14: handleBoardDescriptionEvent,
   15: handleBuildEdgeEvent,
   16: handleBuildCornerEvent,
   17: handleMoveRobberEvent,
-  // 36: handleTradeOfferEvent,
-  // 37: handleTradeResponseEvent,
-  // 43: handleTradeEvent,
-  44: handleGameRulesEvent,
   73: handleChatMessageEvent,
 };
 
@@ -169,9 +157,6 @@ const commandReplacements = {
 };
 
 const KNIGHT_ID = 7;
-const TURN_STATE_EVENT = 9;
-const BOARD_DESCRIPTION_EVENT = 14;
-const PLAYER_STATE_EVENT = 12;
 
 // Strings in game log messages
 const messageMappers = {
@@ -192,7 +177,7 @@ const messageMappers = {
   "strings:socket.tileBlockedByRobber": (options) =>
     `${options.tileString} is blocked by the robber`,
   "strings:socket.stolenResourceCards.thief": (options) =>
-    `${colorIdToUsernameMap[myColor]} stole ${options.cardString} from ${options.playerName}`,
+    `You stole ${options.cardString} from ${options.playerName}`,
   "strings:socket.stolenResourceCards.victim": (options) =>
     `${options.playerName} stole ${options.cardString} from you`,
   "strings:socket.stolenResourceCards.closed": (options) =>
@@ -235,10 +220,8 @@ const PORT_SIZE = 40;
 const DOCK_SIZE = 4;
 const TEXT_IMAGE_SIZE = 15;
 
-let gameLog = [];
-let playerStateLog = [];
-let currentTurnNumber = -1;
-let myColor = null;
+let gameReplay = null;
+let drawnTurnNumber = -1;
 
 const gameLogInput = document.getElementById("game-log-input");
 const prevBtn = document.getElementById("prev-btn");
@@ -258,79 +241,39 @@ const turnNumberLabel = document.getElementById("turn-number-label");
 
 eventIndexInput.addEventListener("input", (event) => {
   const newEventIndex = Math.min(
-    gameLog.length,
+    gameReplay.length,
     Math.max(parseInt(event.target.value), 0)
   );
-  processEvents(newEventIndex);
+  drawTurn(newEventIndex);
 });
 
 gameLogInput.addEventListener("change", (event) => {
   const file = event.target.files[0];
   const reader = new FileReader();
   reader.onload = () => {
-    reset();
-    const fullGameLog = JSON.parse(reader.result);
-    let processingTurnPlayer = null;
-    let processingTurnNumber = 0;
+    gameReplay = new GameReplay(JSON.parse(reader.result));
+    console.log("Replay parsed", gameReplay);
 
-    // Process all events up to the game rules event and store the remainder in the gameLog
-    for (let eventIndex = 0; eventIndex < fullGameLog.length; eventIndex++) {
-      const event = fullGameLog[eventIndex];
-      const data = event.data;
-      const eventType = data.type;
-      const eventHandler = eventHandlers[eventType];
-      if (eventHandler) {
-        if (eventType == TURN_STATE_EVENT) {
-          const nextTurnPlayer = data.payload.currentTurnPlayerColor;
-          if (nextTurnPlayer != 0 && nextTurnPlayer != processingTurnPlayer) {
-            processingTurnNumber++;
-            processingTurnPlayer = nextTurnPlayer;
-          }
-        }
-        if (gameLog.length <= processingTurnNumber) {
-          gameLog.push([]);
-        }
-        gameLog[processingTurnNumber].push(data);
-      } else if (eventType == PLAYER_STATE_EVENT) {
-        const newPlayerState = {};
-        for (const playerState of data.payload) {
-          newPlayerState[playerState.username] = playerState;
-        }
-        if (playerStateLog.length == processingTurnNumber) {
-          // First player state event for this turn, push
-          const previousPlayerState =
-            processingTurnNumber > 0
-              ? playerStateLog[processingTurnNumber - 1]
-              : {};
-          const updatedPlayerState = getUpdatedPlayerState(
-            previousPlayerState,
-            newPlayerState
-          );
-          playerStateLog.push(updatedPlayerState);
-        } else if (playerStateLog.length == processingTurnNumber + 1) {
-          // Subsequent player state event for this turn, update
-          const previousPlayerState = playerStateLog[processingTurnNumber];
-          const updatedPlayerState = getUpdatedPlayerState(
-            previousPlayerState,
-            newPlayerState
-          );
-          playerStateLog[processingTurnNumber] = updatedPlayerState;
-        } else {
-          console.error(
-            `Unexpected player state log length ${playerStateLog.length} for turn ${processingTurnNumber}`
-          );
-        }
-      } else {
-        console.debug(
-          `No event handler for event ${eventIndex} with type ${eventType}`,
-          event
-        );
-      }
-    }
-    eventIndexInput.max = gameLog.length;
+    eventIndexInput.max = gameReplay.turns.length;
     eventIndexInput.disabled = false;
-    processEvents(0);
     eventIndexInput.value = 0;
+
+    hexTilesGroup.innerHTML = "";
+    hexEdgesGroup.innerHTML = "";
+    hexCornersGroup.innerHTML = "";
+    chatContainer.innerHTML = "";
+    logContainer.innerHTML = "";
+    playerTable.innerHTML = "";
+    turnNumberLabel.innerHTML = "";
+    handCounts.innerHTML = "";
+    bankCounts.innerHTML = "";
+    setViewboxAttributes();
+    setRobberAttributes();
+    drawBankCards();
+    drawHandCards();
+
+    drawnTurnNumber = -1;
+    drawTurn(0);
   };
   reader.readAsText(file);
 });
@@ -344,18 +287,18 @@ document.addEventListener("keydown", (event) => {
 });
 
 function prevEvent() {
-  if (currentTurnNumber > 0) {
-    processEvents(currentTurnNumber - 1);
-    eventIndexInput.value = currentTurnNumber;
+  if (drawnTurnNumber > 0) {
+    drawTurn(drawnTurnNumber - 1);
+    eventIndexInput.value = drawnTurnNumber;
   } else {
     console.log("Reached beginning of game log");
   }
 }
 
 function nextEvent() {
-  if (currentTurnNumber < gameLog.length - 1) {
-    processEvents(currentTurnNumber + 1);
-    eventIndexInput.value = currentTurnNumber;
+  if (drawnTurnNumber < gameReplay.turns.length - 1) {
+    drawTurn(drawnTurnNumber + 1);
+    eventIndexInput.value = drawnTurnNumber;
   } else {
     console.log("Reached end of game log");
   }
@@ -363,16 +306,15 @@ function nextEvent() {
 
 /**
  *
- * @param {*} startingTurnNumber the index in the game log to start processing events from
- * @param {*} endingTurnNumber the index in the game log to stop processing events at
+ * @param {*} turnNumber the index in the game log to draw the state of
  */
-function processEvents(endingTurnNumber) {
-  const isReversed = currentTurnNumber > endingTurnNumber;
+function drawTurn(turnNumberToDraw) {
+  const isReversed = drawnTurnNumber > turnNumberToDraw;
   const direction = isReversed ? -1 : 1;
   const startOffset = isReversed ? 0 : 1;
   for (
-    let turnNumber = currentTurnNumber + startOffset;
-    turnNumber != endingTurnNumber + startOffset;
+    let turnNumber = drawnTurnNumber + startOffset;
+    turnNumber != turnNumberToDraw + startOffset;
     turnNumber += direction
   ) {
     console.debug(
@@ -381,9 +323,9 @@ function processEvents(endingTurnNumber) {
       "with direction",
       direction
     );
-    const turnLogs = gameLog[turnNumber];
-    for (let turnLogIndex = 0; turnLogIndex < turnLogs.length; turnLogIndex++) {
-      const log = turnLogs[turnLogIndex];
+    const events = gameReplay.turns[turnNumber].events;
+    for (let turnLogIndex = 0; turnLogIndex < events.length; turnLogIndex++) {
+      const log = events[turnLogIndex];
       const eventHandler = eventHandlers[log.type];
       const turnLogIdentifier = `${turnNumber}-${turnLogIndex}`;
       if (eventHandler) {
@@ -396,11 +338,13 @@ function processEvents(endingTurnNumber) {
       }
     }
   }
-  updatePlayerContainer(endingTurnNumber);
-  currentTurnNumber = endingTurnNumber;
-  turnNumberLabel.textContent = `Turn ${currentTurnNumber}`;
-  nextBtn.disabled = currentTurnNumber >= gameLog.length - 1;
-  prevBtn.disabled = currentTurnNumber <= 0;
+  gameTurn = gameReplay.turns[turnNumberToDraw];
+  drawBankState(gameTurn.bankState);
+  drawPlayerStates(gameTurn.playerStates, gameTurn.currentTurnPlayerColor);
+  drawnTurnNumber = turnNumberToDraw;
+  turnNumberLabel.textContent = `Turn ${drawnTurnNumber}`;
+  nextBtn.disabled = drawnTurnNumber >= gameReplay.length - 1;
+  prevBtn.disabled = drawnTurnNumber <= 0;
 }
 
 /**
@@ -858,9 +802,9 @@ function getMessageId(eventIndex) {
  * @param {*} username the name of the player to enhance
  * @returns the html for a span element with the bolded and colored version of the player's name
  */
-function getPlayerNameString(username) {
+function getPlayerNameString(username, color) {
   const span = document.createElement("span");
-  span.style.color = colorNamesToHex[usernameToColorMap[username]];
+  span.style.color = colorNamesToHex[colorIdsToNames[color]];
   span.style.fontWeight = "bold";
   span.textContent = username;
   return span.outerHTML;
@@ -894,28 +838,27 @@ function decorateMessage(message) {
     );
     decoratedMessage = decoratedMessage.replaceAll(re, img.outerHTML);
   }
-  for (const username of Object.keys(usernameToColorMap)) {
+  for (const [username, color] of Object.entries(gameReplay.usernameToColor)) {
     const re = new RegExp(`\\b${username}\\b`, "gi");
     decoratedMessage = decoratedMessage.replaceAll(
       re,
-      getPlayerNameString(username)
+      getPlayerNameString(username, color)
     );
   }
   span.innerHTML = decoratedMessage;
   return decoratedMessage;
 }
 
-function handleBankStateEvent(data, isReversed, eventIndex) {
-  console.debug(`Bank state event at index ${eventIndex}`, data);
+function drawBankState(bankState) {
   let cardCounts = {
     lumber: 0,
     brick: 0,
     wool: 0,
     grain: 0,
     ore: 0,
-    devcardback: data.payload.hiddenDevelopmentCards.length,
+    devcardback: bankState.hiddenDevelopmentCards.length,
   };
-  for (const resource of data.payload.resourceCards) {
+  for (const resource of bankState.resourceCards) {
     const resourceName = tileTypeToResourceName[resource];
     if (resourceName) {
       cardCounts[resourceName]++;
@@ -925,10 +868,6 @@ function handleBankStateEvent(data, isReversed, eventIndex) {
     const cardCount = document.getElementById(`${card}-bank-count`);
     cardCount.textContent = count;
   }
-}
-
-function handleDiceRollEvent(data, isReversed, eventIndex) {
-  console.debug(`Dice roll event at index ${eventIndex}`, data);
 }
 
 function getPlayerRow(username) {
@@ -960,35 +899,23 @@ function getPlayerCell(username, cellType) {
 
 function handleBoardDescriptionEvent(data, isReversed, eventIndex) {
   console.debug(`Board description event at index ${eventIndex}`, data);
-  // Draw pointy-top hex grid
-  // See https://www.redblobgames.com/grids/hexagons/ for explanation of hex grid coordinates
-  for (const tile of data.payload.tileState.tiles) {
-    const hexFaceCenter = hexFaceGridToPixel(tile.hexFace);
-    const resourceName = tileTypeToResourceName[tile.tileType];
-    drawHexFace(hexFaceCenter, resourceName);
-    if (resourceName != "desert") {
-      drawProbability(hexFaceCenter, tile._diceNumber);
-    } else {
-      moveRobber(tile.hexFace);
+  if (isReversed) {
+    console.error("Cannot reverse board description event");
+  } else {
+    for (const tile of data.payload.tileState.tiles) {
+      const hexFaceCenter = hexFaceGridToPixel(tile.hexFace);
+      const resourceName = tileTypeToResourceName[tile.tileType];
+      drawHexFace(hexFaceCenter, resourceName);
+      if (resourceName != "desert") {
+        drawProbability(hexFaceCenter, tile._diceNumber);
+      } else {
+        moveRobber(tile.hexFace);
+      }
     }
   }
 
   for (const portEdge of data.payload.portState.portEdges) {
     drawPort(portEdge);
-  }
-}
-
-function handleTurnStateEvent(data, isReversed, eventIndex) {
-  console.debug(`Turn state event at index ${eventIndex}`, data);
-  const currentTurnPlayer =
-    colorIdToUsernameMap[data.payload.currentTurnPlayerColor];
-  for (const username of Object.keys(usernameToColorMap)) {
-    const playerRow = getPlayerRow(username);
-    if (username == currentTurnPlayer) {
-      playerRow.style.backgroundColor = "lightgray";
-    } else {
-      playerRow.style.backgroundColor = "darkgray";
-    }
   }
 }
 
@@ -1035,29 +962,7 @@ function handleChatMessageEvent(data, isReversed, eventIndex) {
   }
 }
 
-function handleTradeEvent(data, isReversed, eventIndex) {
-  console.debug(`Trade event at ${eventIndex}`, data);
-  payload = data.payload;
-  const givingPlayer = colorIdToUsernameMap[payload.givingPlayer];
-  const receivingPlayer = colorIdToUsernameMap[payload.receivingPlayer];
-  const givingResources = payload.givingCards.map(
-    (tileType) => tileTypeToResourceName[tileType]
-  );
-  const receivingResources = payload.receivingCards.map(
-    (tileType) => tileTypeToResourceName[tileType]
-  );
-  // TODO: finish incomplete implementation
-}
-
-function handleTradeOfferEvent(data, isReversed, eventIndex) {
-  console.debug(`Trade offer event at ${eventIndex}`, data);
-}
-
-function handleTradeResponseEvent(data, isReversed, eventIndex) {
-  console.debug(`Trade response event ${data}`);
-}
-
-function handleGameLogEvent(data, isReversed, eventIndex) {
+function handleLogMessageEvent(data, isReversed, eventIndex) {
   console.debug(`Game log event at ${eventIndex}`, data);
   if (isReversed) {
     eraseMessage(eventIndex, logContainer);
@@ -1077,63 +982,10 @@ function handleGameLogEvent(data, isReversed, eventIndex) {
   }
 }
 
-function handleGameRulesEvent(data, isReversed, eventIndex) {
-  console.debug(`Game rules event at ${eventIndex}`, data);
-  if (isReversed) {
-    console.error("Game rules event is not reversible");
-  }
-}
-
-function handlePlayOrderEvent(data, isReversed, eventIndex) {
-  console.debug(`Play order event at ${eventIndex}`, data);
-  if (isReversed) {
-    console.error("Play order event is not reversible");
-  } else {
-    myColor = data.payload.myColor;
-  }
-}
-
-function reset() {
-  hexTilesGroup.innerHTML = "";
-  hexEdgesGroup.innerHTML = "";
-  hexCornersGroup.innerHTML = "";
-  chatContainer.innerHTML = "";
-  logContainer.innerHTML = "";
-  playerTable.innerHTML = "";
-  turnNumberLabel.innerHTML = "";
-  handCounts.innerHTML = "";
-  bankCounts.innerHTML = "";
-  eventIndexInput.value = 0;
-  gameLog = [];
-  playerStateLog = [];
-  currentTurnNumber = -1;
-  myColor = null;
-  setViewboxAttributes();
-  setRobberAttributes();
-  drawBankCards();
-  drawHandCards();
-}
-
-function getUpdatedPlayerState(previousPlayerState, newPlayerState) {
-  const updatedPlayerState = {};
-  for (const [username, newState] of Object.entries(newPlayerState)) {
-    updatedPlayerState[username] = newState;
-  }
-  for (const [username, previousState] of Object.entries(previousPlayerState)) {
-    if (!updatedPlayerState[username]) {
-      updatedPlayerState[username] = previousState;
-    }
-  }
-  return updatedPlayerState;
-}
-
-function updatePlayerContainer(turnNumber) {
-  for (const [username, player] of Object.entries(playerStateLog[turnNumber])) {
-    colorIdToUsernameMap[player.color] = username;
-    usernameToColorMap[username] = colorIdsToNames[player.color];
-
+function drawPlayerStates(playerStates, currentTurnPlayerColor) {
+  for (const [username, player] of Object.entries(playerStates)) {
     const nameCell = getPlayerCell(username, "name");
-    nameCell.innerHTML = getPlayerNameString(username);
+    nameCell.innerHTML = getPlayerNameString(username, player.color);
 
     const pointsCell = getPlayerCell(username, "points");
     pointsCell.textContent = player.victoryPointState._totalPublicVictoryPoints;
@@ -1158,12 +1010,12 @@ function updatePlayerContainer(turnNumber) {
       ? `<b>${player.longestRoad}</b>`
       : player.longestRoad;
 
-    if (player.color == myColor) {
+    if (player.color == gameReplay.replayOwnerColor) {
       const playerName = document.getElementById("my-name");
       playerName.textContent = username;
       playerName.setAttribute(
         "fill",
-        colorNamesToHex[colorIdsToNames[myColor]]
+        colorNamesToHex[colorIdsToNames[player.color]]
       );
       playerName.setAttribute("font-weight", "bold");
       const cardCounts = {};
@@ -1178,6 +1030,9 @@ function updatePlayerContainer(turnNumber) {
         handCardCount.textContent = cardCounts[cardId] || 0;
       }
     }
+
+    getPlayerRow(username).style.backgroundColor =
+      player.color == currentTurnPlayerColor ? "#e6e6e6" : "#ababab";
   }
 }
 

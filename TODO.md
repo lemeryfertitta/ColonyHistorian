@@ -2,7 +2,6 @@
 
 ## Pre-release
 
-- Fix turn highlight discrepancy between reverse and forward
 - Make road colors gradient using light/dark colors defined in colonist js
 - Make per turn text more clear (maybe prefix with turn number?)
 - Make distinction between last placement turn and first dice roll, and 4th players placement turns
