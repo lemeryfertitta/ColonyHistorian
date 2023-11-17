@@ -324,16 +324,15 @@ function drawTurn(turnNumberToDraw) {
       direction
     );
     const events = gameReplay.turns[turnNumber].events;
-    for (let turnLogIndex = 0; turnLogIndex < events.length; turnLogIndex++) {
-      const log = events[turnLogIndex];
-      const eventHandler = eventHandlers[log.type];
-      const turnLogIdentifier = `${turnNumber}-${turnLogIndex}`;
+    for (let eventIndex = 0; eventIndex < events.length; eventIndex++) {
+      const event = events[eventIndex];
+      const eventHandler = eventHandlers[event.type];
       if (eventHandler) {
-        eventHandler(log, isReversed, turnLogIdentifier);
+        eventHandler(event, isReversed, turnNumber, eventIndex);
       } else {
         console.debug(
-          `No event handler for log ${turnLogIdentifier} with type ${log.type}`,
-          log
+          `No event handler for log ${turnLogIdentifier} with type ${event.type}`,
+          event
         );
       }
     }
@@ -762,8 +761,8 @@ function moveRobber(targetHexFace) {
   robber.setAttribute("visibility", "visibile");
 }
 
-function drawMessage(message, eventIndex, container) {
-  const messageId = getMessageId(eventIndex);
+function drawMessage(message, turnNumber, eventIndex, container) {
+  const messageId = getMessageId(turnNumber, eventIndex);
   const existingMessage = document.getElementById(messageId);
   if (existingMessage != null) {
     container.removeChild(existingMessage);
@@ -772,14 +771,14 @@ function drawMessage(message, eventIndex, container) {
   messageDiv.id = messageId;
   messageDiv.class = "chat-message";
   const messageSpan = document.createElement("span");
-  messageSpan.innerHTML = decorateMessage(message);
+  messageSpan.innerHTML = decorateMessage(turnNumber, message);
   messageDiv.appendChild(messageSpan);
   container.appendChild(messageDiv);
   container.scrollTop = container.scrollHeight;
 }
 
-function eraseMessage(eventIndex, container) {
-  const messageId = getMessageId(eventIndex);
+function eraseMessage(turnNumber, eventIndex, container) {
+  const messageId = getMessageId(turnNumber, eventIndex);
   const messageElement = document.getElementById(messageId);
   if (messageElement) {
     container.removeChild(messageElement);
@@ -793,8 +792,8 @@ function getDrawnElementId(type, coordinates) {
   return `${type}-${coordinates.x}-${coordinates.y}-${coordinates.z}`;
 }
 
-function getMessageId(eventIndex) {
-  return `message-${eventIndex}`;
+function getMessageId(turnNumber, eventIndex) {
+  return `message-${turnNumber}-${eventIndex}`;
 }
 
 /**
@@ -816,8 +815,7 @@ function getPlayerNameString(username, color) {
  * @param {*} message the string to decorate with images or styling
  * @returns the decorated message
  */
-function decorateMessage(message) {
-  const span = document.createElement("span");
+function decorateMessage(turnNumber, message) {
   let decoratedMessage = message;
   const img = document.createElement("img");
   img.setAttribute("width", TEXT_IMAGE_SIZE);
@@ -845,8 +843,7 @@ function decorateMessage(message) {
       getPlayerNameString(username, color)
     );
   }
-  span.innerHTML = decoratedMessage;
-  return decoratedMessage;
+  return `<b>Turn ${turnNumber} → </b> ${decoratedMessage}`;
 }
 
 function drawBankState(bankState) {
@@ -897,8 +894,7 @@ function getPlayerCell(username, cellType) {
   }
 }
 
-function handleBoardDescriptionEvent(data, isReversed, eventIndex) {
-  console.debug(`Board description event at index ${eventIndex}`, data);
+function handleBoardDescriptionEvent(data, isReversed) {
   if (isReversed) {
     console.error("Cannot reverse board description event");
   } else {
@@ -919,8 +915,7 @@ function handleBoardDescriptionEvent(data, isReversed, eventIndex) {
   }
 }
 
-function handleBuildEdgeEvent(data, isReversed, eventIndex) {
-  console.debug(`Build edge event at index ${eventIndex}`, data);
+function handleBuildEdgeEvent(data, isReversed) {
   const payload = data.payload[0];
   if (isReversed) {
     eraseEdge(payload.hexEdge);
@@ -929,8 +924,7 @@ function handleBuildEdgeEvent(data, isReversed, eventIndex) {
   }
 }
 
-function handleBuildCornerEvent(data, isReversed, eventIndex) {
-  console.debug(`Build corner event at index ${eventIndex}`, data);
+function handleBuildCornerEvent(data, isReversed) {
   payload = data.payload[0];
   if (isReversed) {
     eraseCorner(payload.hexCorner, payload.owner, payload.buildingType);
@@ -939,8 +933,7 @@ function handleBuildCornerEvent(data, isReversed, eventIndex) {
   }
 }
 
-function handleMoveRobberEvent(data, isReversed, eventIndex) {
-  console.debug(`Move robber event at index ${eventIndex}`, data);
+function handleMoveRobberEvent(data, isReversed) {
   if (isReversed) {
     moveRobber(data.payload[0].hexFace);
   } else {
@@ -948,24 +941,27 @@ function handleMoveRobberEvent(data, isReversed, eventIndex) {
   }
 }
 
-function handleChatMessageEvent(data, isReversed, eventIndex) {
-  console.debug(`Chat message event at ${eventIndex}`, data);
+function handleChatMessageEvent(data, isReversed, turnNumber, eventIndex) {
   payload = data.payload;
   if (payload.text != null) {
     const message = payload.text.options.value;
     const username = payload.username;
     if (isReversed) {
-      eraseMessage(eventIndex, chatContainer);
+      eraseMessage(turnNumber, eventIndex, chatContainer);
     } else {
-      drawMessage(`${username}: ${message}`, eventIndex, chatContainer);
+      drawMessage(
+        `${username}: ${message}`,
+        turnNumber,
+        eventIndex,
+        chatContainer
+      );
     }
   }
 }
 
-function handleLogMessageEvent(data, isReversed, eventIndex) {
-  console.debug(`Game log event at ${eventIndex}`, data);
+function handleLogMessageEvent(data, isReversed, turnNumber, eventIndex) {
   if (isReversed) {
-    eraseMessage(eventIndex, logContainer);
+    eraseMessage(turnNumber, eventIndex, logContainer);
   } else {
     const payload = data.payload;
     const key = payload.text.key;
@@ -973,6 +969,7 @@ function handleLogMessageEvent(data, isReversed, eventIndex) {
     if (messageMapper) {
       drawMessage(
         messageMapper(payload.text.options),
+        turnNumber,
         eventIndex,
         logContainer
       );
