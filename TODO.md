@@ -13,4 +13,3 @@
 - Get extension to work in firefox (may have to figure out how to do extension without MAIN world directive)
 - Consider hosting log storage and replayer
 - Handle connection drop
-- Link to chrome extension after review complete

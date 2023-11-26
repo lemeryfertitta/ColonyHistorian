@@ -6,11 +6,7 @@ Historian is a fan-made browser extension and web app which allow for easy captu
 
 ## Installation
 
-Chrome is currently the only browser supported for this extension. Contributions to assist with porting the extension to other browsers are welcome!
-
-The Chrome extension is currently pending review by Google. In the meantime, the Chrome extension must be installed manually. To do so, [download](https://github.com/lemeryfertitta/ColonyHistorian/archive/refs/heads/main.zip) or clone this repository.
-
-Navigate to [chrome://extensions](chrome://extensions) and click "Load Unpacked" at the top left corner of the screen. Then simply navigate to and select the `ColonyHistorian` directory that you've downloaded. The extension should start working immediately upon your next visit to Colonist.io.
+The Chrome extension is availalble [here](https://chromewebstore.google.com/detail/colony-historian/olhlbckekdlekoaifaoboooalbeboefj). Chrome is currently the only browser supported for this extension. Contributions to assist with porting the extension to other browsers are welcome!
 
 ## Usage
 
